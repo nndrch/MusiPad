@@ -44,6 +44,10 @@ function applyEngravingRules(osmd: OpenSheetMusicDisplay): void {
   // In this OSMD version positive offset moves the mark UP; the default (-15)
   // sits on top of the chords, so push it well above them.
   rules.RehearsalMarkYOffsetDefault = 20;
+  // Lead-sheet readability (Berklee §16): ~4 bars per line, not OSMD's dense
+  // density-based packing. Explicit XML system/page breaks still take effect.
+  rules.RenderXMeasuresPerLineAkaSystem = 4;
+  rules.NewSystemAtXMLNewSystemAttribute = true;
 }
 
 /**
