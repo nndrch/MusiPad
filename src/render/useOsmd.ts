@@ -36,6 +36,10 @@ const OSMD_OPTIONS: IOSMDOptions = {
   drawComposer: false,
   // The movement-title duplicates the work-title, so the subtitle is redundant.
   drawSubtitle: false,
+  // Tempo / Key / Feel live in the topbar chips, so the printed ♩=NN metronome
+  // mark is redundant on the page (and collided with the feel words). The feel
+  // words themselves are stripped in `buildRenderDoc` (no OSMD flag for them).
+  drawMetronomeMarks: false,
   // The playback cursor (M2) — a thin orange line at the current onset. Created
   // here so `osmd.cursor` exists after render; the transport drives it.
   // `follow: false` because OsmdView renders into a fixed-width scaled page, so
@@ -44,6 +48,22 @@ const OSMD_OPTIONS: IOSMDOptions = {
     { type: CursorType.ThinLeft, color: '#e8590c', alpha: 0.5, follow: false },
   ],
 };
+
+/**
+ * A view-only copy of the score for OSMD to render. The real `doc` stays the
+ * single source of truth (Invariant #1) — it keeps every element for export,
+ * the topbar chips, and playback. This clone just drops header marks that are
+ * now surfaced in the topbar and otherwise clash on the page: the **feel/style
+ * words** (the first `words` direction in measure 1, per `scoreInfo`). The
+ * tempo (♩=NN) mark is suppressed via `drawMetronomeMarks` instead.
+ */
+function buildRenderDoc(doc: Document): Document {
+  const clone = doc.cloneNode(true) as Document;
+  const firstMeasure = clone.querySelector('part > measure');
+  const feelWords = firstMeasure?.querySelector('direction direction-type words');
+  feelWords?.closest('direction')?.remove();
+  return clone;
+}
 
 /** Tweaks so loaded section marks and chord symbols don't collide. */
 function applyEngravingRules(osmd: OpenSheetMusicDisplay): void {
@@ -68,10 +88,15 @@ function applyEngravingRules(osmd: OpenSheetMusicDisplay): void {
  *
  * `onRendered` fires after each successful render with the OSMD instance, so
  * callers (App) can drive the cursor / build the playback schedule (M2).
+ *
+ * `revision` re-renders from the same `doc` after an in-place command edit (M3):
+ * commands mutate the DOM without changing its identity, so bumping `revision`
+ * is how the view learns to redraw.
  */
 export function useOsmd(
   doc: Document | null,
   onRendered?: (osmd: OpenSheetMusicDisplay) => void,
+  revision = 0,
 ): UseOsmdResult {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
@@ -99,7 +124,8 @@ export function useOsmd(
     };
   }, []);
 
-  // Load + render whenever the document changes.
+  // Load + render whenever the document changes — or when `revision` bumps,
+  // i.e. a command edited the DOM in place (M3).
   useEffect(() => {
     const osmd = osmdRef.current;
     if (!osmd) return;
@@ -110,7 +136,7 @@ export function useOsmd(
 
     let cancelled = false;
     osmd
-      .load(doc)
+      .load(buildRenderDoc(doc))
       .then(() => {
         if (cancelled) return;
         osmd.render();
@@ -128,7 +154,7 @@ export function useOsmd(
     return () => {
       cancelled = true;
     };
-  }, [doc]);
+  }, [doc, revision]);
 
   const error = failure && failure.doc === doc ? failure.message : null;
   const status: OsmdStatus = !doc

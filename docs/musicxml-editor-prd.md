@@ -281,13 +281,16 @@ Each milestone is independently runnable and demoable.
 ### M4 — Global edits (Key, Transpose, Tempo)
 
 - Key dropdown (relabel). Transpose stepper (pitches + key). Tempo input (drives playback).
-- **AC:** Each is a command (undoable). Transpose +2 then −2 → DOM identical to the load baseline. Tempo change audibly changes playback (creating `sound[@tempo]`/`metronome` if the file had none).
+- **Title header block** (promoted from post-MVP P1): render **Key · Tempo · Feel** as a subline under the song title; it reflects edits live (the M3 inline marks were removed — see `drawMetronomeMarks`/`buildRenderDoc`). App-display only; the print-embedded version stays in P4.
+- `SetTempo` also completes the partial-sync case here: when only one of `sound[@tempo]`/`metronome` exists, create the missing partner (PRD §8).
+- **AC:** Each is a command (undoable). Transpose +2 then −2 → DOM identical to the load baseline. Tempo change audibly changes playback (creating `sound[@tempo]`/`metronome` if the file had none, keeping the two in sync). The title subline shows Key/Tempo/Feel and updates when they're edited.
 
 ### M5 — Overlay projector + Selection
 
 - Build the HTML overlay layer; derive measure boxes + per-beat anchors from OSMD graphics; logical→pixel projection on render/resize.
 - Bar selection (click bar background → accent outline).
-- **AC:** Anchors sit correctly over beats; survive resize; bar selection visible.
+- **Bar-highlight playhead** (promoted from post-MVP P3): drive the same measure-box highlight from the transport so the **whole current measure** is highlighted during playback (the M2 thin-line cursor becomes a full-bar `--accent-tint` fill).
+- **AC:** Anchors sit correctly over beats; survive resize; bar selection visible; during playback the current measure is highlighted and advances in time.
 
 ### M6 — Chords (dropdown)
 
@@ -300,7 +303,8 @@ Each milestone is independently runnable and demoable.
 - Per-bar slash toggle (or fallback). Draggable section marks (rehearsal) + draggable annotations (words), snap-to-bar.
 - Note respell (right-click note).
 - `LocalFileIO.save` → serialize DOM → download `.musicxml`.
-- **AC:** Drag a section to another bar; add an annotation; toggle slashes; download → reopening the file shows all edits; unedited measures identical to the load baseline; declaration/DOCTYPE intact.
+- **Print** (promoted from post-MVP P4): a Print button beside Download that prints the score via `@media print` CSS — score only (topbar/transport/cursor/overlays hidden). Full client-side **A4 PDF generation** stays in P4.
+- **AC:** Drag a section to another bar; add an annotation; toggle slashes; download → reopening the file shows all edits; unedited measures identical to the load baseline; declaration/DOCTYPE intact. Print produces a clean score-only page.
 
 ### M8 — Polish
 

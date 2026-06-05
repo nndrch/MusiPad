@@ -7,6 +7,8 @@ interface OsmdViewProps {
   doc: Document;
   /** Fires after each successful render with the OSMD instance (M2 playback). */
   onRendered?: (osmd: OpenSheetMusicDisplay) => void;
+  /** Bumps when a command edits the DOM in place — triggers a re-render (M3). */
+  revision?: number;
 }
 
 /**
@@ -14,8 +16,8 @@ interface OsmdViewProps {
  * then scale that whole page proportionally to fit the viewport width — like
  * MuseScore's page view — so resizing zooms instead of re-breaking lines.
  */
-export function OsmdView({ doc, onRendered }: OsmdViewProps) {
-  const { containerRef, status, error } = useOsmd(doc, onRendered);
+export function OsmdView({ doc, onRendered, revision }: OsmdViewProps) {
+  const { containerRef, status, error } = useOsmd(doc, onRendered, revision);
   const pageRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [naturalHeight, setNaturalHeight] = useState(0);
