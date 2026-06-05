@@ -8,10 +8,10 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 
 ## Current state (2026-06-05)
 
-- **Shipped:** M0 (Scaffold) and M1 (Load + Render) are merged to `main`.
-- **Latest:** a docs + small-code pass merged via [PR #2](https://github.com/nndrch/MusiPad/pull/2) — W3C/MusicXML-compliance, chord-playback PRD refactor, Berklee lead-sheet conventions, the header **Feel** chip, **~4 bars/line** rendering, and three new reference docs (guidelines, generation reference, this roadmap).
+- **Shipped:** M0 (Scaffold), M1 (Load + Render), and **M2 (Playback)** are merged to `main`.
+- **Latest:** **M2 — Playback (chord-chart realization)** via [PR #4](https://github.com/nndrch/MusiPad/pull/4) — press play to hear chords sounded as sustained block voicings in the chart's rhythm, with a synced playhead and metronome toggle. Chord realization follows the **harmonic rhythm** (one chord per `harmony`, held until it changes), not the per-slash grid.
 - **Live preview:** https://musipad.vercel.app (Vercel project `nndrchs-projects/musipad`; GitHub connected → pushes to `main` deploy production, branches/PRs get preview URLs).
-- **Next milestone:** **M2 — Playback (chord-chart realization)** — awaiting go-ahead.
+- **Next milestone:** **M3 — Command layer + Undo/Redo** (the spine; prerequisite for the Key/Transpose/Tempo edits in M4) — awaiting go-ahead.
 
 ---
 
@@ -22,8 +22,8 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 | M0  | Scaffold                                 | ✅ Done    | — (direct to `main`)                                    | `2583d81`, `166d61a`  |
 | M1  | Load + Render (+ ScoreIO)                | ✅ Done    | [#1](https://github.com/nndrch/MusiPad/pull/1) (merged) | `99fbb78` ← `9dd4d14` |
 | —   | W3C-compliance + lead-sheet pass         | ✅ Done    | [#2](https://github.com/nndrch/MusiPad/pull/2) (merged) | see PR #2             |
-| M2  | Playback (chord-chart realization)       | ⏳ Next    | —                                                       | —                     |
-| M3  | Command layer + Undo/Redo                | ⏳ Planned | —                                                       | —                     |
+| M2  | Playback (chord-chart realization)       | ✅ Done    | [#4](https://github.com/nndrch/MusiPad/pull/4) (merged) | `315a792`             |
+| M3  | Command layer + Undo/Redo                | ⏳ Next    | —                                                       | —                     |
 | M4  | Global edits (Key, Transpose, Tempo)     | ⏳ Planned | —                                                       | —                     |
 | M5  | Overlay projector + Selection            | ⏳ Planned | —                                                       | —                     |
 | M6  | Chords (dropdown)                        | ⏳ Planned | —                                                       | —                     |
@@ -57,10 +57,14 @@ Retroactive correctness/quality work on the M0/M1 base, plus PRD reframes. Merge
 - **Berklee lead-sheet conventions** folded into PRD/guidelines; added two now-implemented features: header **Feel** chip and **~4 bars/line** rendering.
 - **New reference docs:** [`musicxml-guidelines.md`](./musicxml-guidelines.md) (editing this project), [`chord-chart-generation-reference.md`](./chord-chart-generation-reference.md) (portable, for an audio→chart generator), and this roadmap.
 
-### M2 — Playback (chord-chart realization) ⏳ Next
+### M2 — Playback (chord-chart realization) ✅ (PR #4)
 
-- Build a schedule from note/slash onsets (rhythm) + active `harmony` per onset; sound block chord voicings via Web Audio (don't play placeholder pitches). Transport (play/pause/seek), playhead, metronome toggle, tempo fallback when absent.
-- Open question to decide at start: on an onset with no active chord (pre-first-harmony gap), play silence or carry the previous chord?
+- **PR [#4](https://github.com/nndrch/MusiPad/pull/4)** (`feat/m2-playback` → `main`); feature commit `315a792`.
+- Delivered (`src/audio/`): `voicing` (`harmony`→MIDI block voicing, full `kind` enum + slash chords), `schedule` (DOM→tempo-independent timeline + tempo map + metronome beats), `synth` (self-contained Web Audio synth — no soundfont dep — + metronome click), `player` (look-ahead transport on the AudioContext clock, OSMD-cursor playhead), `useTransport`/`Transport` (footer UI). Cursor enabled in `useOsmd`.
+- **Key decision:** chord realization follows the **harmonic rhythm** — one chord per `harmony`, sustained until the next change — **not** the per-slash grid (which would sound metronomic). The slashes only step the playhead. (Berklee: rhythm slashes keep time, they don't re-trigger the chord; see [`musicxml-guidelines.md`](./musicxml-guidelines.md), [`chord-chart-generation-reference.md`](./chord-chart-generation-reference.md) §126/§321.)
+- **Open question resolved:** pre-first-harmony onsets play **silence**; an active chord carries forward (no mid-piece gap).
+- **Flagged (post-MVP, [P3](./post-mvp-improvements.md)):** selectable instrument/synth voice; auto-scroll to keep the playhead visible. **Synth approach:** oscillator synth over `soundfont-player` (zero-dependency, offline, deterministic; swap behind the same `Synth` interface later).
+- Verified: `tsc`/`eslint`/`vite build`; 27 deterministic assertions over the fixtures; adversarial multi-agent review (7 findings fixed).
 
 ### M3–M8 ⏳ Planned
 
