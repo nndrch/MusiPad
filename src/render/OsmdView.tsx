@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import { NATURAL_WIDTH, useOsmd } from './useOsmd';
 import './OsmdView.css';
 
 interface OsmdViewProps {
   doc: Document;
+  /** Fires after each successful render with the OSMD instance (M2 playback). */
+  onRendered?: (osmd: OpenSheetMusicDisplay) => void;
 }
 
 /**
@@ -11,8 +14,8 @@ interface OsmdViewProps {
  * then scale that whole page proportionally to fit the viewport width — like
  * MuseScore's page view — so resizing zooms instead of re-breaking lines.
  */
-export function OsmdView({ doc }: OsmdViewProps) {
-  const { containerRef, status, error } = useOsmd(doc);
+export function OsmdView({ doc, onRendered }: OsmdViewProps) {
+  const { containerRef, status, error } = useOsmd(doc, onRendered);
   const pageRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [naturalHeight, setNaturalHeight] = useState(0);

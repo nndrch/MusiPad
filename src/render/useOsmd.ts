@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  CursorType,
   OpenSheetMusicDisplay,
   type IOSMDOptions,
 } from 'opensheetmusicdisplay';
@@ -35,6 +36,13 @@ const OSMD_OPTIONS: IOSMDOptions = {
   drawComposer: false,
   // The movement-title duplicates the work-title, so the subtitle is redundant.
   drawSubtitle: false,
+  // The playback cursor (M2) — a thin orange line at the current onset. Created
+  // here so `osmd.cursor` exists after render; the transport drives it.
+  // `follow: false` because OsmdView renders into a fixed-width scaled page, so
+  // we don't want OSMD's own auto-scroll fighting that transform.
+  cursorsOptions: [
+    { type: CursorType.ThinLeft, color: '#e8590c', alpha: 0.5, follow: false },
+  ],
 };
 
 /** Tweaks so loaded section marks and chord symbols don't collide. */
@@ -57,8 +65,14 @@ function applyEngravingRules(osmd: OpenSheetMusicDisplay): void {
  *
  * Status is *derived* from which doc last rendered/failed, so the effect only
  * ever calls setState asynchronously (avoids cascading-render churn).
+ *
+ * `onRendered` fires after each successful render with the OSMD instance, so
+ * callers (App) can drive the cursor / build the playback schedule (M2).
  */
-export function useOsmd(doc: Document | null): UseOsmdResult {
+export function useOsmd(
+  doc: Document | null,
+  onRendered?: (osmd: OpenSheetMusicDisplay) => void,
+): UseOsmdResult {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
   const [renderedDoc, setRenderedDoc] = useState<Document | null>(null);
@@ -66,6 +80,12 @@ export function useOsmd(doc: Document | null): UseOsmdResult {
     doc: Document;
     message: string;
   } | null>(null);
+
+  // Keep the latest callback in a ref so its identity never re-triggers render.
+  const onRenderedRef = useRef(onRendered);
+  useEffect(() => {
+    onRenderedRef.current = onRendered;
+  });
 
   // Create the OSMD instance once, tied to the container element.
   useEffect(() => {
@@ -95,6 +115,7 @@ export function useOsmd(doc: Document | null): UseOsmdResult {
         if (cancelled) return;
         osmd.render();
         setRenderedDoc(doc);
+        onRenderedRef.current?.(osmd);
       })
       .catch((err: unknown) => {
         if (cancelled) return;

@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import { LocalFileIO } from './io/LocalFileIO';
 import { parseXml } from './model/xmlDoc';
 import { readScoreInfo } from './model/scoreInfo';
 import { OsmdView } from './render/OsmdView';
+import { Transport } from './audio/Transport';
+import { useTransport } from './audio/useTransport';
 import { Dropzone } from './ui/Dropzone';
 import { Topbar } from './ui/Topbar';
 import './App.css';
@@ -50,13 +53,26 @@ interface ScoreProps {
   onClose: () => void;
 }
 
-/** Loaded-score view: header summary + scaled score canvas. */
+/** Loaded-score view: header summary + scaled score canvas + playback transport. */
 function Score({ doc, fileName, onClose }: ScoreProps) {
   const info = useMemo(() => readScoreInfo(doc), [doc]);
+
+  // The OSMD instance + a render counter let the transport build its schedule
+  // and re-link the cursor after each render (M2).
+  const [osmd, setOsmd] = useState<OpenSheetMusicDisplay | null>(null);
+  const [renderTick, setRenderTick] = useState(0);
+  const handleRendered = useCallback((instance: OpenSheetMusicDisplay) => {
+    setOsmd(instance);
+    setRenderTick((tick) => tick + 1);
+  }, []);
+
+  const transport = useTransport(doc, osmd, renderTick);
+
   return (
     <div className="app">
       <Topbar fileName={fileName} info={info} onClose={onClose} />
-      <OsmdView doc={doc} />
+      <OsmdView doc={doc} onRendered={handleRendered} />
+      <Transport controls={transport} />
     </div>
   );
 }
