@@ -1,6 +1,6 @@
 dist
 node_modules
-musicxml-editor-prd.md
+docs/musicxml-editor-prd.md
 *.musicxml
 *.xml
 *.mxl

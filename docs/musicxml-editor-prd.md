@@ -117,12 +117,13 @@ Calm, content-first, almost chrome-less. The score is the document; controls are
 │            (overlay layer for chords / sections / notes)    │
 │                                                             │
 ├───────────────────────────────────────────────────────────┤
-│  Transport:  ▶ / ⏸   ●──────────────  00:12 / 02:30        │  ← playhead in --accent
+│  Transport:  ▶ / ⏸   ●────────  00:12 / 02:30   ⏱ Metronome │  ← playhead in --accent
 └───────────────────────────────────────────────────────────┘
 ```
 
 - **Empty state:** centered dropzone, faint dashed border, "Drop a MusicXML file or click to choose." Notepad-blank.
 - **Download** is the only orange (primary) button in the topbar.
+- **Transport (footer):** play/pause, seek bar with playhead (in `--accent`), elapsed / total time, and a **Metronome toggle**. The metronome is a quiet line-icon toggle (`⏱` lucide), grayscale when off, gaining `--accent` when on. When **on**, it emits an audible click on every beat, in time with the song's current tempo (BPM); it follows tempo edits live and re-syncs on play/pause/seek. When **off**, no click is emitted. (Default: off.)
 
 ### 6.3 Editing interactions
 
@@ -252,7 +253,8 @@ Each milestone is independently runnable and demoable.
 ### M2 — Playback
 
 - Wire osmd-audio-player (or fallback). Transport: play/pause/seek, playhead in `--accent`.
-- **AC:** Score plays; pause/seek work; playhead tracks position.
+- **Metronome toggle** (§6.2): footer toggle that, when on, emits an audible click per beat synced to the current tempo (BPM) via Web Audio. Off by default; follows tempo edits and play/pause/seek state.
+- **AC:** Score plays; pause/seek work; playhead tracks position. Metronome toggle on → audible beat clicks at the song tempo; off → silent; changing tempo changes the click rate.
 
 ### M3 — Command layer + Undo/Redo
 
