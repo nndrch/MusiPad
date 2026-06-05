@@ -20,4 +20,4 @@ npm run format       # Prettier
 
 ## Status
 
-Built in milestones M0 → M8 (see PRD §9; live status in [`docs/roadmap.md`](./docs/roadmap.md)). Shipped so far: **M0–M3**. Latest — **M3 — Command layer + Undo/Redo**: the editing spine — every change is an undoable command (⌘Z / ⌘⇧Z), ready for the Key/Transpose/Tempo edits in M4.
+Built in milestones M0 → M8 (see PRD §9; live status in [`docs/roadmap.md`](./docs/roadmap.md)). Shipped so far: **M0–M4**. Latest — **M4 — Global edits (Key, Transpose, Tempo)**: a toolbar to relabel the key, transpose the whole chart (pitches + key + chords, key-aware spelling), and set the tempo — all undoable. Plus a live document header (title + Key · Tempo subline) and load-time defaults (C major / 120 BPM) with a dismissible alert when a file is missing them.

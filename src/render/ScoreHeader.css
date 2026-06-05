@@ -1,0 +1,37 @@
+/* Song header on the score sheet. Centered like a chart title; the subline
+   (Key · Tempo · Feel) is quiet/muted per the design language (PRD §6.1).
+   Missing values render as muted, italic empty-state placeholders. */
+.score-header {
+  padding: 26px 24px 0;
+  text-align: center;
+  color: var(--text);
+}
+
+.score-header__title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.score-header__title.is-empty {
+  color: var(--text-faint);
+  font-weight: 500;
+  font-style: italic;
+}
+
+.score-header__subline {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.score-header__slot.is-empty {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.score-header__dot {
+  margin: 0 6px;
+  color: var(--text-faint);
+}

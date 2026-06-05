@@ -7,16 +7,30 @@
 }
 
 /*
- * The "paper". Width is the available space (capped, centered like a Notion
- * page); its height is set inline to the *scaled* score height so the desk
- * scrolls correctly. The scaled layer is absolutely positioned so its fixed
+ * The "paper" sheet — one white page (capped, centered like a Notion page)
+ * holding the HTML document header (title + subline) and the score below it,
+ * so the title reads as part of the same document. The scaled score fits the
+ * width exactly and is transparent (the sheet supplies the white), so no
+ * clipping is needed — and omitting it avoids briefly hiding the score on the
+ * first frame before its height is measured.
+ */
+.osmd-paper {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/*
+ * The score region. Its height is set inline to the *scaled* score height so the
+ * sheet sizes correctly. The scaled layer is absolutely positioned so its fixed
  * NATURAL_WIDTH never feeds back into this width.
  */
 .osmd-page {
   position: relative;
   width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
 }
 
 .osmd-scale {
@@ -24,9 +38,6 @@
   top: 0;
   left: 0;
   transform-origin: top left;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
 }
 
 .osmd-host {

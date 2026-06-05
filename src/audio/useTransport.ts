@@ -51,6 +51,11 @@ export function useTransport(
   }, []);
 
   // (Re)load the schedule + cursor whenever the score or its rendering changes.
+  // Note (M4): a command edit (Key/Transpose/Tempo) bumps `renderTick`, so an
+  // edit made *during* playback reloads here — `Player.load` stops playback and
+  // resets the playhead to the top. Acceptable for M4 (the new tempo is audible
+  // on the next play); preserving the play position across a schedule rebuild is
+  // a transport refinement deferred to M5 (post-MVP).
   useEffect(() => {
     const player = playerRef.current;
     if (!player || !doc || !osmd) return;

@@ -27,7 +27,9 @@ const OSMD_OPTIONS: IOSMDOptions = {
   autoResize: false, // we scale proportionally instead of reflowing (no line breaks change)
   backend: 'svg', // SVG so M5 can overlay an HTML layer on top
   drawingParameters: 'default',
-  drawTitle: true,
+  // The title is rendered as an HTML document header instead (M4 `ScoreHeader`),
+  // so it's live-editable and carries the Key · Tempo · Feel subline.
+  drawTitle: false,
   // Pipeline output labels the part with a long opaque id (e.g.
   // "Instr. P269f…") which otherwise indents the first system off-center.
   drawPartNames: false,
@@ -141,6 +143,7 @@ export function useOsmd(
         if (cancelled) return;
         osmd.render();
         setRenderedDoc(doc);
+        setFailure(null); // a fresh successful render clears any prior error
         onRenderedRef.current?.(osmd);
       })
       .catch((err: unknown) => {

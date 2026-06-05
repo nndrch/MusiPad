@@ -46,11 +46,13 @@ Suggested UI-quality → kind map: `maj→major`, `min/m→minor`, `7→dominant
 
 - The `<transpose>` element (in `attributes`: `diatonic`, `chromatic` (semitones, required), `octave-change`, `double`) encodes **instrument** written-vs-sounding transposition. It is **not** a request to move pitches — leave any existing one intact.
 - To actually transpose, rewrite every `note/pitch` (`step`/`alter`/`octave`) **and** `key/fifths`, with an enharmonic spelling policy. The ±n/∓n identity test (vs the load baseline) is the guard.
+- **Implemented (M4, [`commands/transpose.ts`](../src/commands/transpose.ts)):** pitches move on a `(diatonic, chromatic)` coordinate (reversible: `+n`/`−n` cancel). On a chord chart the chords are the point, so `harmony` **root + bass** move too (the slash-note pitches are hidden). Spelling is **key-aware** — for the requested chromatic interval we pick the letter-step count whose resulting `fifths` has the fewest accidentals, so the key stays within ±7 (OSMD can only render ±7 — beyond it throws "key signature spec: undefined") and reads conventionally (C major +2 → D major; A major −1 → A♭ major). The `<transpose>` element is left untouched.
 
 ## Tempo
 
 - `sound[@tempo]` = quarter-notes per minute, **drives playback**; the visible `metronome` (`beat-unit` + `per-minute`) is the **printed mark**. Keep them in sync.
 - A file may have **no tempo at all** (common from the pipeline) and tempo can change mid-piece (multiple `sound`/`direction`). Playback needs a default (e.g. 120); `SetTempo` must create both at measure 1 when absent.
+- **Implemented (M4, [`commands/tempo.ts`](../src/commands/tempo.ts)):** `setTempo` patches both representations and, in the partial case (only one present), **creates the missing partner** in the same `<direction>` with correct child order (all `direction-type`s precede `<sound>`). On **load**, [`model/defaults.ts`](../src/model/defaults.ts) assigns a default tempo (120 BPM) **and** key (C major) when the file has neither, surfacing a dismissible alert — so the chart is always editable/playable.
 
 ## Slashes — per-note `note/notehead` = `slash`
 
