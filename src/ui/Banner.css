@@ -1,0 +1,47 @@
+/* Dismissible notice above the score (M4). Quiet, soft-accent surface; content
+   centered to align with the score sheet. */
+.banner {
+  flex: none;
+  padding: 8px 24px;
+  background: var(--accent-tint);
+  border-bottom: 1px solid var(--border);
+}
+
+.banner__inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.banner__icon {
+  flex: none;
+  color: var(--accent);
+}
+
+.banner__text {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.banner__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.banner__dismiss:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}

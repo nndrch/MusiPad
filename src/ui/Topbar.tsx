@@ -1,5 +1,4 @@
 import { FileMusic, Redo2, Undo2, X } from 'lucide-react';
-import type { ScoreInfo } from '../model/scoreInfo';
 import './Topbar.css';
 
 // The undo/redo handler accepts both ⌘ (Mac) and Ctrl (Windows/Linux); show the
@@ -11,8 +10,6 @@ const REDO_HINT = IS_MAC ? '⌘⇧Z' : 'Ctrl+Shift+Z';
 
 interface TopbarProps {
   fileName: string;
-  /** Key / Tempo summary read from the score (display-only until M4). */
-  info: ScoreInfo;
   /** Undo/redo wiring from the command layer (M3). */
   canUndo: boolean;
   canRedo: boolean;
@@ -23,13 +20,13 @@ interface TopbarProps {
 }
 
 /**
- * Slim topbar (PRD §6.2). Shows the loaded file name, a read-only Key / Tempo /
- * Feel summary, and Undo/Redo (M3) — disabled/faint when their stack is empty
- * (PRD §6.4). The orange Download button arrives in M7.
+ * Slim topbar (PRD §6.2). Shows the loaded file name and Undo/Redo (M3) —
+ * disabled/faint when their stack is empty (PRD §6.4). Key / Tempo / Feel are
+ * surfaced by the toolbar controls and the document subline (M4), not here. The
+ * orange Download button arrives in M7.
  */
 export function Topbar({
   fileName,
-  info,
   canUndo,
   canRedo,
   onUndo,
@@ -41,21 +38,6 @@ export function Topbar({
       <div className="topbar__file">
         <FileMusic size={16} strokeWidth={1.75} />
         <span className="topbar__name">{fileName}</span>
-      </div>
-
-      <div className="topbar__meta">
-        <span className="topbar__chip" title="Key signature">
-          <span className="topbar__chip-label">Key</span>
-          {info.key ?? '—'}
-        </span>
-        <span className="topbar__chip" title="Tempo (quarter-notes per minute)">
-          <span className="topbar__chip-label">Tempo</span>
-          {info.tempo != null ? `${info.tempo} BPM` : '—'}
-        </span>
-        <span className="topbar__chip" title="Style / feel marking">
-          <span className="topbar__chip-label">Feel</span>
-          {info.style ?? '—'}
-        </span>
       </div>
 
       <div className="topbar__spacer" />

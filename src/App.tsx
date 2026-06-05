@@ -2,13 +2,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import { LocalFileIO } from './io/LocalFileIO';
 import { parseXml } from './model/xmlDoc';
+import { applyDefaults, type DefaultsApplied } from './model/defaults';
 import { readScoreInfo } from './model/scoreInfo';
 import { OsmdView } from './render/OsmdView';
 import { Transport } from './audio/Transport';
 import { useTransport } from './audio/useTransport';
 import { useScoreEditor } from './store/useScoreEditor';
+import { setKeySignature } from './commands/key';
+import { transpose } from './commands/transpose';
+import { setTempo } from './commands/tempo';
 import { Dropzone } from './ui/Dropzone';
 import { Topbar } from './ui/Topbar';
+import { Toolbar } from './ui/Toolbar';
+import { Banner } from './ui/Banner';
 import './App.css';
 
 /**
@@ -19,6 +25,7 @@ import './App.css';
 export default function App() {
   const [doc, setDoc] = useState<Document | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [defaults, setDefaults] = useState<DefaultsApplied | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleFile(file: File) {
@@ -26,11 +33,16 @@ export default function App() {
     try {
       const io = new LocalFileIO(file);
       const text = await io.load();
-      setDoc(parseXml(text));
+      const parsed = parseXml(text);
+      // Assign C major / 120 BPM if the file is missing them (PRD §11);
+      // `defaults` (a fresh object per load) drives the dismissible alert.
+      setDefaults(applyDefaults(parsed));
+      setDoc(parsed);
       setFileName(file.name);
     } catch (err) {
       setDoc(null);
       setFileName(null);
+      setDefaults(null);
       setError(err instanceof Error ? err.message : String(err));
     }
   }
@@ -38,28 +50,49 @@ export default function App() {
   function handleClose() {
     setDoc(null);
     setFileName(null);
+    setDefaults(null);
     setError(null);
   }
 
-  if (!doc || !fileName) {
+  if (!doc || !fileName || !defaults) {
     return <Dropzone onFile={handleFile} error={error} />;
   }
 
-  return <Score doc={doc} fileName={fileName} onClose={handleClose} />;
+  return (
+    <Score
+      doc={doc}
+      fileName={fileName}
+      defaults={defaults}
+      onClose={handleClose}
+    />
+  );
 }
 
 interface ScoreProps {
   doc: Document;
   fileName: string;
+  defaults: DefaultsApplied;
   onClose: () => void;
 }
 
+/** Human message for the defaults-assigned alert. */
+function defaultsMessage(d: DefaultsApplied): string {
+  if (d.key && d.tempo) {
+    return 'This file had no key or tempo — defaulted to C major and 120 BPM. Adjust them in the toolbar.';
+  }
+  if (d.key) {
+    return 'This file had no key signature — defaulted to C major. Change it in the toolbar.';
+  }
+  return 'This file had no tempo — defaulted to 120 BPM. Change it in the toolbar.';
+}
+
 /** Loaded-score view: header summary + scaled score canvas + playback transport. */
-function Score({ doc, fileName, onClose }: ScoreProps) {
+function Score({ doc, fileName, defaults, onClose }: ScoreProps) {
   // The command layer (M3). `revision` bumps on every edit; thread it into
   // anything derived from the (in-place-mutated) DOM so it refreshes. The
-  // editor's `dispatch` gains its triggering UI (Key/Tempo controls) in M4.
-  const { undo, redo, canUndo, canRedo, revision } = useScoreEditor(doc);
+  // Toolbar (M4) is the first UI to dispatch real edits.
+  const { dispatch, undo, redo, canUndo, canRedo, revision } =
+    useScoreEditor(doc);
 
   // `revision` is an intentional dep: commands mutate `doc` in place (its
   // identity is unchanged), so the header chips must re-read on each edit.
@@ -78,6 +111,13 @@ function Score({ doc, fileName, onClose }: ScoreProps) {
 
   const transport = useTransport(doc, osmd, renderTick);
 
+  // Dismissible alert when defaults were assigned on load (PRD §11). Reset when
+  // a new file loads (a fresh `defaults` object) by adjusting state in render.
+  const [dismissedFor, setDismissedFor] = useState<DefaultsApplied | null>(null);
+  if (dismissedFor !== null && dismissedFor !== defaults) setDismissedFor(null);
+  const showBanner =
+    (defaults.key || defaults.tempo) && dismissedFor !== defaults;
+
   // Keyboard: ⌘Z / Ctrl+Z undo, ⌘⇧Z / Ctrl+Shift+Z redo.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -94,14 +134,30 @@ function Score({ doc, fileName, onClose }: ScoreProps) {
     <div className="app">
       <Topbar
         fileName={fileName}
-        info={info}
         canUndo={canUndo}
         canRedo={canRedo}
         onUndo={undo}
         onRedo={redo}
         onClose={onClose}
       />
-      <OsmdView doc={doc} onRendered={handleRendered} revision={revision} />
+      <Toolbar
+        info={info}
+        onSetKey={(fifths, mode) => dispatch(setKeySignature(fifths, mode))}
+        onTranspose={(semitones) => dispatch(transpose(semitones))}
+        onSetTempo={(bpm) => dispatch(setTempo(bpm))}
+      />
+      {showBanner && (
+        <Banner
+          message={defaultsMessage(defaults)}
+          onDismiss={() => setDismissedFor(defaults)}
+        />
+      )}
+      <OsmdView
+        doc={doc}
+        info={info}
+        onRendered={handleRendered}
+        revision={revision}
+      />
       <Transport controls={transport} />
     </div>
   );

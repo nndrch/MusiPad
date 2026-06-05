@@ -8,8 +8,17 @@
  * keys (`key-step`/`key-alter`) with no `fifths` — all handled gracefully.
  */
 export interface ScoreInfo {
+  /** Song title (`work-title`, falling back to `movement-title`), or null. */
+  title: string | null;
   /** e.g. "G major", "E minor", "D dorian", or null if no key is written. */
   key: string | null;
+  /** Whether an `attributes/key` exists at all — the Key control can only
+   *  relabel an existing key (creating one is out of M4 scope). */
+  hasKey: boolean;
+  /** Raw `fifths` of the first traditional key (−7…+7), for the Key control. */
+  keyFifths: number | null;
+  /** Raw `mode` of the first key (lowercased), or null when unset. */
+  keyMode: string | null;
   /** Quarter-notes per minute, or null if none is written. */
   tempo: number | null;
   /** Style/feel marking, e.g. "Medium Swing" — Berklee lead-sheet convention. */
@@ -61,7 +70,54 @@ const MODE_FIFTHS_OFFSET: Record<string, number> = {
 };
 
 export function readScoreInfo(doc: Document): ScoreInfo {
-  return { key: readKey(doc), tempo: readTempo(doc), style: readStyle(doc) };
+  const { fifths, mode } = readKeySignature(doc);
+  return {
+    title: readTitle(doc),
+    key: readKey(doc),
+    hasKey: doc.querySelector('attributes key') != null,
+    keyFifths: fifths,
+    keyMode: mode,
+    tempo: readTempo(doc),
+    style: readStyle(doc),
+  };
+}
+
+/** Raw `fifths`/`mode` of the first traditional key — for the Key control (M4). */
+function readKeySignature(doc: Document): {
+  fifths: number | null;
+  mode: string | null;
+} {
+  const keyEl = doc.querySelector('attributes key');
+  const fifthsText = keyEl?.querySelector('fifths')?.textContent;
+  const fifths = fifthsText != null ? Number.parseInt(fifthsText, 10) : NaN;
+  const mode = keyEl?.querySelector('mode')?.textContent?.trim().toLowerCase();
+  return {
+    fifths: Number.isNaN(fifths) ? null : fifths,
+    mode: mode || null,
+  };
+}
+
+/**
+ * Human label for a (fifths, mode) key — "C major", "E minor", "D dorian", …
+ * Shared by the Key dropdown (M4) so its option labels match the header chip.
+ */
+export function keyLabel(fifths: number, mode: string): string {
+  const tonic = tonicForKey(fifths, mode);
+  if (!tonic) return describeSignature(fifths);
+  const label = mode && mode !== 'major' ? mode : 'major';
+  return `${tonic} ${label}`;
+}
+
+/**
+ * Song title — `work/work-title`, falling back to `movement-title` (both are
+ * valid score headers; pipeline output uses `work-title`). Rendered as the
+ * HTML document header (M4); OSMD's own title is disabled (`drawTitle: false`).
+ */
+function readTitle(doc: Document): string | null {
+  const title =
+    doc.querySelector('work > work-title')?.textContent?.trim() ||
+    doc.querySelector('movement-title')?.textContent?.trim();
+  return title || null;
 }
 
 /**

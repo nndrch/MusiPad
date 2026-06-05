@@ -283,7 +283,10 @@ Each milestone is independently runnable and demoable.
 - Key dropdown (relabel). Transpose stepper (pitches + key). Tempo input (drives playback).
 - **Title header block** (promoted from post-MVP P1): render **Key · Tempo · Feel** as a subline under the song title; it reflects edits live (the M3 inline marks were removed — see `drawMetronomeMarks`/`buildRenderDoc`). App-display only; the print-embedded version stays in P4.
 - `SetTempo` also completes the partial-sync case here: when only one of `sound[@tempo]`/`metronome` exists, create the missing partner (PRD §8).
-- **AC:** Each is a command (undoable). Transpose +2 then −2 → DOM identical to the load baseline. Tempo change audibly changes playback (creating `sound[@tempo]`/`metronome` if the file had none, keeping the two in sync). The title subline shows Key/Tempo/Feel and updates when they're edited.
+- **Transpose spelling is key-aware:** for the requested chromatic interval, pick the letter-step count whose resulting `fifths` has the fewest accidentals — keeping the key within OSMD's renderable ±7 (beyond it OSMD throws) and conventionally spelled (C major +2 → D major; A major −1 → A♭ major). Chords (`harmony` root + bass) transpose too — they're the visible/audible content of a chord chart.
+- **Missing-data defaults (M4):** when a loaded file has no key and/or tempo (§11), assign defaults (**C major** / **120 BPM**) into the DOM on load and show a **dismissible alert** above the sheet, so the chart is always editable and playable. Feel/style is optional and not surfaced in the M4 UI (the reader stays; display/edit is post-MVP).
+- **Note (build):** the read-only Key/Tempo/Feel topbar chips (M1) were removed as redundant with the toolbar controls + the title subline. The subline shows Key · Tempo; the title renders as an HTML document header on the score sheet, which keeps A4 proportions.
+- **AC:** Each is a command (undoable). Transpose +2 then −2 → DOM identical to the load baseline. Tempo change audibly changes playback (creating `sound[@tempo]`/`metronome` if the file had none, keeping the two in sync). The title subline shows Key/Tempo and updates when they're edited.
 
 ### M5 — Overlay projector + Selection
 

@@ -38,8 +38,9 @@ Bring the chart closer to a professional lead sheet, per the [Berklee guidelines
 
 - **Road-map editing** — add/edit repeat barlines, multiple `ending`s, `segno`/`coda` + `D.S.`/`D.C.` jumps. This is what keeps a chart to one page; the PoC only preserves+renders them.
 - **Chord-symbol display options** — let the user _pick_ a house style for `kind/@text` (e.g. `–` vs `mi` for minor, `Δ` vs `Maj7`), applied consistently across the chart. (The PoC already writes conventional symbols; this adds user choice.)
+- **Style / feel marking — display & edit.** The feel marking (e.g. "Medium Swing") is **not mandatory**, so the MVP UI doesn't surface it: M4 removed it from the header (no topbar chip, no subline slot, no empty-state placeholder). The **reader stays in place** (`model/scoreInfo.ts` `readStyle` → `info.style`), so picking this up later is just UI: show it (where it won't clutter or read as required) and add an editor (a `words` direction near the top, per the Berklee convention below).
 
-**Pulled into the PoC** (no longer deferred): reading + showing the **style/feel marking** in the header (next to Key/Tempo), and **~4 bars/line** lead-sheet line breaking (`RenderXMeasuresPerLineAkaSystem`, honoring explicit `<print>` breaks). Both landed in M1.
+**Pulled into the PoC** (no longer deferred): **~4 bars/line** lead-sheet line breaking (`RenderXMeasuresPerLineAkaSystem`, honoring explicit `<print>` breaks), which landed in M1. (The style/feel marking was briefly shown in the header but is now deferred — see the bullet above.)
 
 **Why deferred:** The PoC corrects metadata on existing charts and round-trips the road map untouched; authoring/restyling the navigation is a richer editing surface that builds on M5–M7.
 
@@ -77,3 +78,19 @@ True client-side **PDF export in A4 format** — a downloadable, paginated PDF o
 - The fixed-`NATURAL_WIDTH` scaled-page model ([`useOsmd.ts`](../src/render/useOsmd.ts)/[`OsmdView.tsx`](../src/render/OsmdView.tsx)) should map cleanly onto A4 width; OSMD also has `PageFormat`/page-layout options worth evaluating.
 
 **Why deferred:** The MVP's output of record is the corrected `.musicxml` (M7), and a quick Print covers paper output; a pixel-faithful A4 PDF generator (new deps, pagination) is a heavier convenience layered on top.
+
+---
+
+## P5 — Edits: refinements surfaced by the M4 review
+
+Items flagged by the M4 adversarial review and deliberately deferred — the core edits are correct and reversible (M4 AC holds); these are quality/robustness refinements.
+
+**Scope / ideas:**
+
+- **Disable Key/Tempo/Transpose edits while playing.** Simplest fix for the edit-during-playback behavior: while the transport is playing, disable (grey out) the Key dropdown, Transpose ± and Tempo field so an edit can't yank the schedule out from under playback. (Today an edit reloads the schedule, stopping playback and snapping the playhead to the top — see `useTransport.ts`.)
+- **Or: preserve playback position across a schedule rebuild.** The richer alternative to disabling — give `Player` a reload path that keeps `playing`/`positionSec` and re-strikes the held chord at the current position, so a tempo edit takes effect mid-play (fits the **M5** transport/playhead work).
+- **Extreme-key enharmonic round-trip.** Transpose is key-aware ([`transpose.ts`](../src/commands/transpose.ts) — it picks the fewest-accidental spelling, so keys stay within ±7 and read conventionally, e.g. A major ↓ = A♭ major). The one residual edge: the two extreme keys at exactly ±6/±7 fifths (F♯/G♭ and C♯/C♭ major) can round-trip (`+n` then `−n`) onto their *enharmonic equivalent* spelling — musically identical, and these keys are practically absent from lead-sheet charts. A full respell policy (M7) could pin a house spelling here.
+- **Preserve non-canonical numeric text.** Transpose canonicalizes `alter` text (a source `"1.0"` becomes `"1"`); key/tempo edits are similar for numeric fields. Harmless for our pipeline (canonical integers only), but a fully byte-faithful patcher would leave untouched numeric formatting intact.
+- **Louder missing-data warning.** When a file loads without a key/tempo, M4 shows muted/italic empty-state placeholders ("no key", "no tempo") and the tempo field's "120" placeholder, and playback falls back to 120. A more prominent toast/banner is deferred to **M8** (toasts/empty states) since a coloured warning would break the §6.1 grayscale language used inline.
+
+**Why deferred:** None breaks an M4 acceptance criterion; each is a refinement on top of working, reversible edits.
