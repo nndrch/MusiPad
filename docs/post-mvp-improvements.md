@@ -40,3 +40,16 @@ Bring the chart closer to a professional lead sheet, per the [Berklee guidelines
 **Pulled into the PoC** (no longer deferred): reading + showing the **style/feel marking** in the header (next to Key/Tempo), and **~4 bars/line** lead-sheet line breaking (`RenderXMeasuresPerLineAkaSystem`, honoring explicit `<print>` breaks). Both landed in M1.
 
 **Why deferred:** The PoC corrects metadata on existing charts and round-trips the road map untouched; authoring/restyling the navigation is a richer editing surface that builds on M5–M7.
+
+---
+
+## P3 — Playback enhancements
+
+Build on the M2 chord-chart playback engine ([`src/audio/`](../src/audio/)). The PoC sounds chords as a sustained block voicing through a small built-in synth, with the playhead on OSMD's cursor.
+
+**Scope / ideas:**
+
+- **Selectable instrument / synth voice** — let the user pick the playback timbre (piano, acoustic guitar, electric guitar, electric piano, organ, …) instead of the single built-in oscillator tone. The MVP deliberately uses a self-contained Web Audio oscillator synth (zero-dependency, offline, deterministic — see [`synth.ts`](../src/audio/synth.ts)); this swaps in sampled/soundfont instruments behind the same `Synth` interface, with a picker in the transport. (A guitar voice could also motivate strummed/arpeggiated voicings rather than block chords.)
+- **Auto-scroll to follow the playhead** — when playing, keep the play marking (cursor) always visible by scrolling the page to track it. The MVP sets OSMD's `follow: false` (the score is a fixed-width scaled page; see [`useOsmd.ts`](../src/render/useOsmd.ts)) so the playhead can run off-screen on long charts. This adds scroll-into-view synced to the cursor, working *with* the zoom-to-fit transform.
+
+**Why deferred:** The MVP proves the headline — hearing the chords realized in the chart's rhythm. Instrument choice and follow-scroll are quality-of-life refinements on top of a working transport, not part of proving the loop.
