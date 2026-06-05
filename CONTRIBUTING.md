@@ -1,6 +1,6 @@
 # Contributing — MusiPad
 
-In-browser MusicXML revision tool. See [`docs/musicxml-editor-prd.md`](./docs/musicxml-editor-prd.md) for full scope, milestones, and acceptance criteria.
+In-browser MusicXML revision tool. See [`docs/musicxml-editor-prd.md`](./docs/musicxml-editor-prd.md) for full scope, milestones, and acceptance criteria, and [`docs/musicxml-guidelines.md`](./docs/musicxml-guidelines.md) for the MusicXML read/edit cheat-sheet (consult before touching the DOM).
 
 ## Core Invariants (PRD §4 — apply to every change)
 

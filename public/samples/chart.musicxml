@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<!-- Realistic fixture (PRD §11): mirrors pipeline output — high divisions,
+     minor key, per-note <notehead>slash</notehead> (S1 spike), chord kind/@text,
+     rehearsal section mark, sound[@tempo] + visible metronome, and a DOCTYPE. -->
+<score-partwise version="4.0">
+  <work>
+    <work-title>MusiPad Chart Sample</work-title>
+  </work>
+  <part-list>
+    <score-part id="P1">
+      <part-name>Chart</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>480</divisions>
+        <key>
+          <fifths>1</fifths>
+          <mode>minor</mode>
+        </key>
+        <time>
+          <beats>4</beats>
+          <beat-type>4</beat-type>
+        </time>
+        <clef>
+          <sign>G</sign>
+          <line>2</line>
+        </clef>
+      </attributes>
+      <direction placement="above">
+        <direction-type>
+          <words>Medium Swing</words>
+        </direction-type>
+      </direction>
+      <direction placement="above">
+        <direction-type>
+          <metronome>
+            <beat-unit>quarter</beat-unit>
+            <per-minute>92</per-minute>
+          </metronome>
+        </direction-type>
+        <sound tempo="92"/>
+      </direction>
+      <direction placement="above">
+        <direction-type>
+          <rehearsal>Verse</rehearsal>
+        </direction-type>
+      </direction>
+      <harmony>
+        <root>
+          <root-step>E</root-step>
+        </root>
+        <kind text="m">minor</kind>
+      </harmony>
+      <note>
+        <pitch><step>B</step><octave>4</octave></pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <notehead>slash</notehead>
+      </note>
+      <note>
+        <pitch><step>B</step><octave>4</octave></pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <notehead>slash</notehead>
+      </note>
+      <note>
+        <pitch><step>B</step><octave>4</octave></pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <notehead>slash</notehead>
+      </note>
+      <note>
+        <pitch><step>B</step><octave>4</octave></pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <notehead>slash</notehead>
+      </note>
+    </measure>
+    <measure number="2">
+      <harmony>
+        <root>
+          <root-step>A</root-step>
+        </root>
+        <kind text="m">minor</kind>
+      </harmony>
+      <note>
+        <pitch><step>B</step><octave>4</octave></pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <notehead>slash</notehead>
+      </note>
+      <note>
+        <pitch><step>B</step><octave>4</octave></pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <notehead>slash</notehead>
+      </note>
+      <note>
+        <pitch><step>B</step><octave>4</octave></pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <notehead>slash</notehead>
+      </note>
+      <note>
+        <pitch><step>B</step><octave>4</octave></pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <notehead>slash</notehead>
+      </note>
+      <barline location="right">
+        <bar-style>light-heavy</bar-style>
+      </barline>
+    </measure>
+  </part>
+</score-partwise>

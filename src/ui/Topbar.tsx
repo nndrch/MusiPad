@@ -32,6 +32,10 @@ export function Topbar({ fileName, info, onClose }: TopbarProps) {
           <span className="topbar__chip-label">Tempo</span>
           {info.tempo != null ? `${info.tempo} BPM` : '—'}
         </span>
+        <span className="topbar__chip" title="Style / feel marking">
+          <span className="topbar__chip-label">Feel</span>
+          {info.style ?? '—'}
+        </span>
       </div>
 
       <div className="topbar__spacer" />
