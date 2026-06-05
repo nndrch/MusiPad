@@ -22,15 +22,15 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 | M0  | Scaffold                                 | ✅ Done    | — (direct to `main`)                                    | `2583d81`, `166d61a`  |
 | M1  | Load + Render (+ ScoreIO)                | ✅ Done    | [#1](https://github.com/nndrch/MusiPad/pull/1) (merged) | `99fbb78` ← `9dd4d14` |
 | —   | W3C-compliance + lead-sheet pass         | ✅ Done    | [#2](https://github.com/nndrch/MusiPad/pull/2) (merged) | see PR #2             |
-| M2  | Playback (chord-chart realization)       | ⬜ Next    | —                                                       | —                     |
-| M3  | Command layer + Undo/Redo                | ⬜ Planned | —                                                       | —                     |
-| M4  | Global edits (Key, Transpose, Tempo)     | ⬜ Planned | —                                                       | —                     |
-| M5  | Overlay projector + Selection            | ⬜ Planned | —                                                       | —                     |
-| M6  | Chords (dropdown)                        | ⬜ Planned | —                                                       | —                     |
-| M7  | Slashes, Sections, Annotations, Download | ⬜ Planned | —                                                       | —                     |
-| M8  | Polish                                   | ⬜ Planned | —                                                       | —                     |
+| M2  | Playback (chord-chart realization)       | ⏳ Next    | —                                                       | —                     |
+| M3  | Command layer + Undo/Redo                | ⏳ Planned | —                                                       | —                     |
+| M4  | Global edits (Key, Transpose, Tempo)     | ⏳ Planned | —                                                       | —                     |
+| M5  | Overlay projector + Selection            | ⏳ Planned | —                                                       | —                     |
+| M6  | Chords (dropdown)                        | ⏳ Planned | —                                                       | —                     |
+| M7  | Slashes, Sections, Annotations, Download | ⏳ Planned | —                                                       | —                     |
+| M8  | Polish                                   | ⏳ Planned | —                                                       | —                     |
 
-Legend: ✅ done · 🟡 in flight · ⬜ not started.
+Legend: ✅ done · 🟡 in flight · ⏳ not started.
 
 ---
 
@@ -57,12 +57,12 @@ Retroactive correctness/quality work on the M0/M1 base, plus PRD reframes. Merge
 - **Berklee lead-sheet conventions** folded into PRD/guidelines; added two now-implemented features: header **Feel** chip and **~4 bars/line** rendering.
 - **New reference docs:** [`musicxml-guidelines.md`](./musicxml-guidelines.md) (editing this project), [`chord-chart-generation-reference.md`](./chord-chart-generation-reference.md) (portable, for an audio→chart generator), and this roadmap.
 
-### M2 — Playback (chord-chart realization) ⬜ Next
+### M2 — Playback (chord-chart realization) ⏳ Next
 
 - Build a schedule from note/slash onsets (rhythm) + active `harmony` per onset; sound block chord voicings via Web Audio (don't play placeholder pitches). Transport (play/pause/seek), playhead, metronome toggle, tempo fallback when absent.
 - Open question to decide at start: on an onset with no active chord (pre-first-harmony gap), play silence or carry the previous chord?
 
-### M3–M8 ⬜ Planned
+### M3–M8 ⏳ Planned
 
 - **M3** Command layer + Undo/Redo (the spine; ⌘Z/⌘⇧Z).
 - **M4** Global edits: Key (relabel), Transpose (rewrite pitches + key), Tempo (create-when-absent). Round-trip identity test vs load baseline starts here.
