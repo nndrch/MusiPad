@@ -1,6 +1,6 @@
 # MusiPad
 
-In-browser **MusicXML revision tool** — load a generated score, correct the high-value metadata (key, tempo, transpose, per-beat chords, sections, annotations, slashes), hear it back via MIDI, and download a corrected `.musicxml`. A calm, Notion-like notepad UI. No backend (PoC).
+In-browser **MusicXML revision tool** — load a generated score, correct the high-value metadata (key, tempo, transpose, per-beat chords, sections, annotations, slashes), hear the chords played back (chord-chart realization via Web Audio), and download a corrected `.musicxml`. A calm, Notion-like notepad UI. No backend (PoC).
 
 See [`docs/musicxml-editor-prd.md`](./docs/musicxml-editor-prd.md) for full scope and [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the core invariants and build order.
 
@@ -20,4 +20,4 @@ npm run format       # Prettier
 
 ## Status
 
-Built in milestones M0 → M8 (see PRD §9). Currently: **M1 — Load + Render** complete (load `.xml`/`.musicxml`/`.mxl`, render with OSMD, proportional resize, Key/Tempo header).
+Built in milestones M0 → M8 (see PRD §9; live status in [`docs/roadmap.md`](./docs/roadmap.md)). Shipped so far: **M0–M2**. Latest — **M2 — Playback**: press play to hear the chords realized as sustained block voicings in the chart's rhythm, with a synced playhead and metronome toggle.
