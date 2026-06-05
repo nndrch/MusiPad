@@ -62,3 +62,10 @@
   font-size: 12px;
   color: var(--text-faint);
 }
+
+.dropzone__error {
+  margin-top: 4px;
+  max-width: 420px;
+  font-size: 13px;
+  color: var(--accent);
+}

@@ -5,15 +5,17 @@ import './Dropzone.css';
 const ACCEPT = '.xml,.musicxml,.mxl';
 
 interface DropzoneProps {
-  /** Called with the chosen file. Wired to LocalFileIO in M1. */
+  /** Called with the chosen file; App routes it through LocalFileIO. */
   onFile?: (file: File) => void;
+  /** Message shown when the last load/parse attempt failed. */
+  error?: string | null;
 }
 
 /**
- * Empty-state dropzone (PRD §6.2). M0: visual + interaction shell only —
- * actual load/unzip lands in M1 via the ScoreIO adapter.
+ * Empty-state dropzone (PRD §6.2). Captures a `File` (drag-drop or picker)
+ * and hands it up; all reading/unzipping happens in the IO layer (§7.5).
  */
-export function Dropzone({ onFile }: DropzoneProps) {
+export function Dropzone({ onFile, error }: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -55,6 +57,7 @@ export function Dropzone({ onFile }: DropzoneProps) {
           Load a generated score to start correcting it.
         </div>
         <div className="dropzone__formats">.xml · .musicxml · .mxl</div>
+        {error && <div className="dropzone__error">{error}</div>}
         <input
           ref={inputRef}
           type="file"

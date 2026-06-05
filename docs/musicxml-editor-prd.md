@@ -6,6 +6,15 @@
 
 ---
 
+## 0. Global Project Instructions (always apply)
+
+These override default behavior and apply to **every** milestone and change.
+
+1. **Build one milestone at a time.** Work only the current milestone (PRD §9); do not start the next one until its acceptance criteria pass and the human gives the go-ahead.
+2. **Before committing, ask the human to write post-MVP improvement annotations.** When a milestone is complete and ready to commit, pause and prompt the human to capture any ideas/refinements for later in [`post-mvp-improvements.md`](./post-mvp-improvements.md). Only commit after they've had that chance.
+
+---
+
 ## 1. Context & Problem
 
 An upstream "audio-to-preproduction" pipeline (Demucs, Basic Pitch, MSAF, madmom, key/tempo estimation) turns audio into a MusicXML score. The output is a good start but **inaccurate** — wrong chords, mislabeled sections, off key/tempo. There is currently no way for a human to correct it without leaving for desktop software.
