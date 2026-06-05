@@ -1,0 +1,46 @@
+.osmd-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--surface); /* desk around the paper */
+  padding: 32px 24px;
+}
+
+/*
+ * The "paper". Width is the available space (capped, centered like a Notion
+ * page); its height is set inline to the *scaled* score height so the desk
+ * scrolls correctly. The scaled layer is absolutely positioned so its fixed
+ * NATURAL_WIDTH never feeds back into this width.
+ */
+.osmd-page {
+  position: relative;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.osmd-scale {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.osmd-host {
+  padding: 28px 24px;
+}
+
+.osmd-status {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+.osmd-status.is-error {
+  color: var(--accent);
+}
