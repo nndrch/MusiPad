@@ -1,21 +1,41 @@
-import { FileMusic, X } from 'lucide-react';
+import { FileMusic, Redo2, Undo2, X } from 'lucide-react';
 import type { ScoreInfo } from '../model/scoreInfo';
 import './Topbar.css';
+
+// The undo/redo handler accepts both ⌘ (Mac) and Ctrl (Windows/Linux); show the
+// matching hint in the button tooltips.
+const IS_MAC =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const UNDO_HINT = IS_MAC ? '⌘Z' : 'Ctrl+Z';
+const REDO_HINT = IS_MAC ? '⌘⇧Z' : 'Ctrl+Shift+Z';
 
 interface TopbarProps {
   fileName: string;
   /** Key / Tempo summary read from the score (display-only until M4). */
   info: ScoreInfo;
+  /** Undo/redo wiring from the command layer (M3). */
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
   /** Close the current score and return to the empty state. */
   onClose: () => void;
 }
 
 /**
- * Slim topbar (PRD §6.2). M1 shows the loaded file name, a read-only Key /
- * Tempo summary, and a way back to the dropzone. Undo/Redo and the orange
- * Download button arrive in M3 / M7.
+ * Slim topbar (PRD §6.2). Shows the loaded file name, a read-only Key / Tempo /
+ * Feel summary, and Undo/Redo (M3) — disabled/faint when their stack is empty
+ * (PRD §6.4). The orange Download button arrives in M7.
  */
-export function Topbar({ fileName, info, onClose }: TopbarProps) {
+export function Topbar({
+  fileName,
+  info,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  onClose,
+}: TopbarProps) {
   return (
     <header className="topbar">
       <div className="topbar__file">
@@ -39,6 +59,30 @@ export function Topbar({ fileName, info, onClose }: TopbarProps) {
       </div>
 
       <div className="topbar__spacer" />
+
+      <div className="topbar__actions">
+        <button
+          type="button"
+          className="topbar__icon-btn"
+          onClick={onUndo}
+          disabled={!canUndo}
+          aria-label="Undo"
+          title={`Undo (${UNDO_HINT})`}
+        >
+          <Undo2 size={16} strokeWidth={1.75} />
+        </button>
+        <button
+          type="button"
+          className="topbar__icon-btn"
+          onClick={onRedo}
+          disabled={!canRedo}
+          aria-label="Redo"
+          title={`Redo (${REDO_HINT})`}
+        >
+          <Redo2 size={16} strokeWidth={1.75} />
+        </button>
+      </div>
+
       <button type="button" className="topbar__btn" onClick={onClose}>
         <X size={14} strokeWidth={1.75} />
         Close

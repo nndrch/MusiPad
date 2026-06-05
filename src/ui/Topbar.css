@@ -60,6 +60,37 @@
   flex: 1;
 }
 
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Square, quiet icon button (Undo/Redo). Faint + non-interactive when disabled
+   (empty stack), per PRD §6.4. */
+.topbar__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.topbar__icon-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.topbar__icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 /* Quiet, grayscale icon button (PRD §6.1). */
 .topbar__btn {
   display: inline-flex;

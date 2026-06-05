@@ -20,4 +20,4 @@ npm run format       # Prettier
 
 ## Status
 
-Built in milestones M0 → M8 (see PRD §9; live status in [`docs/roadmap.md`](./docs/roadmap.md)). Shipped so far: **M0–M2**. Latest — **M2 — Playback**: press play to hear the chords realized as sustained block voicings in the chart's rhythm, with a synced playhead and metronome toggle.
+Built in milestones M0 → M8 (see PRD §9; live status in [`docs/roadmap.md`](./docs/roadmap.md)). Shipped so far: **M0–M3**. Latest — **M3 — Command layer + Undo/Redo**: the editing spine — every change is an undoable command (⌘Z / ⌘⇧Z), ready for the Key/Transpose/Tempo edits in M4.

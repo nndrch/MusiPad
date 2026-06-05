@@ -8,10 +8,11 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 
 ## Current state (2026-06-05)
 
-- **Shipped:** M0 (Scaffold), M1 (Load + Render), and **M2 (Playback)** are merged to `main`.
-- **Latest:** **M2 — Playback (chord-chart realization)** via [PR #4](https://github.com/nndrch/MusiPad/pull/4) — press play to hear chords sounded as sustained block voicings in the chart's rhythm, with a synced playhead and metronome toggle. Chord realization follows the **harmonic rhythm** (one chord per `harmony`, held until it changes), not the per-slash grid.
+- **Shipped:** M0 (Scaffold), M1 (Load + Render), M2 (Playback), and **M3 (Command layer + Undo/Redo)** are merged to `main`.
+- **Latest:** **M3 — Command layer + Undo/Redo** via [PR #5](https://github.com/nndrch/MusiPad/pull/5) — the editing spine: every DOM mutation is an undoable `Command` (⌘Z/⌘⇧Z), with `revision`-driven re-render. Buttons ship inert until M4 supplies an edit trigger. Also dropped the redundant ♩=NN / feel marks from the page (they live in the topbar chips).
 - **Live preview:** https://musipad.vercel.app (Vercel project `nndrchs-projects/musipad`; GitHub connected → pushes to `main` deploy production, branches/PRs get preview URLs).
-- **Next milestone:** **M3 — Command layer + Undo/Redo** (the spine; prerequisite for the Key/Transpose/Tempo edits in M4) — awaiting go-ahead.
+- **Planning:** a 3-milestone post-MVP re-weigh (CLAUDE.md rule 6) at M3 promoted three low-hanging items into milestones — **title subline → M4**, **bar-highlight playhead → M5**, **basic Print → M7** (PRD §9 updated; A4 PDF generation stays post-MVP).
+- **Next milestone:** **M4 — Global edits (Key, Transpose, Tempo)** — awaiting go-ahead.
 
 ---
 
@@ -23,11 +24,11 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 | M1  | Load + Render (+ ScoreIO)                | ✅ Done    | [#1](https://github.com/nndrch/MusiPad/pull/1) (merged) | `99fbb78` ← `9dd4d14` |
 | —   | W3C-compliance + lead-sheet pass         | ✅ Done    | [#2](https://github.com/nndrch/MusiPad/pull/2) (merged) | see PR #2             |
 | M2  | Playback (chord-chart realization)       | ✅ Done    | [#4](https://github.com/nndrch/MusiPad/pull/4) (merged) | `315a792`             |
-| M3  | Command layer + Undo/Redo                | ⏳ Next    | —                                                       | —                     |
-| M4  | Global edits (Key, Transpose, Tempo)     | ⏳ Planned | —                                                       | —                     |
-| M5  | Overlay projector + Selection            | ⏳ Planned | —                                                       | —                     |
+| M3  | Command layer + Undo/Redo                | ✅ Done    | [#5](https://github.com/nndrch/MusiPad/pull/5) (merged) | `0df417b`             |
+| M4  | Global edits (Key, Transpose, Tempo) + title subline | ⏳ Next    | —                                           | —                     |
+| M5  | Overlay projector + Selection + bar-highlight playhead | ⏳ Planned | —                                         | —                     |
 | M6  | Chords (dropdown)                        | ⏳ Planned | —                                                       | —                     |
-| M7  | Slashes, Sections, Annotations, Download | ⏳ Planned | —                                                       | —                     |
+| M7  | Slashes, Sections, Annotations, Download + Print | ⏳ Planned | —                                               | —                     |
 | M8  | Polish                                   | ⏳ Planned | —                                                       | —                     |
 
 Legend: ✅ done · 🟡 in flight · ⏳ not started.
@@ -66,13 +67,21 @@ Retroactive correctness/quality work on the M0/M1 base, plus PRD reframes. Merge
 - **Flagged (post-MVP, [P3](./post-mvp-improvements.md)):** selectable instrument/synth voice; auto-scroll to keep the playhead visible. **Synth approach:** oscillator synth over `soundfont-player` (zero-dependency, offline, deterministic; swap behind the same `Synth` interface later).
 - Verified: `tsc`/`eslint`/`vite build`; 27 deterministic assertions over the fixtures; adversarial multi-agent review (7 findings fixed).
 
-### M3–M8 ⏳ Planned
+### M3 — Command layer + Undo/Redo ✅ (PR #5)
 
-- **M3** Command layer + Undo/Redo (the spine; ⌘Z/⌘⇧Z).
-- **M4** Global edits: Key (relabel), Transpose (rewrite pitches + key), Tempo (create-when-absent). Round-trip identity test vs load baseline starts here.
-- **M5** Overlay projector + bar selection (logical→pixel anchors; ResizeObserver).
+- **PR [#5](https://github.com/nndrch/MusiPad/pull/5)** (`feat/m3-command-layer` → `main`); feature commit `0df417b`.
+- Delivered: `commands/Command` (interface + snapshot-based inverse, PRD §7.3), `commands/History` (undo/redo stacks), `commands/tempo` (`setTempo` demonstrator), `store/useScoreEditor` (React bridge + `revision` re-render seam). Topbar Undo/Redo (disabled-when-empty, platform-aware tooltips) + ⌘Z/⌘⇧Z. Buttons ship inert until M4 supplies an edit trigger.
+- **Key decision:** commands mutate the DOM **in place** (Invariant #1); a `revision` counter drives re-render of OSMD/transport/chips. Inverse = subtree snapshot (PRD §7.3), proven byte-identical to the load baseline (Invariant #2) on undo.
+- **Also:** dropped the redundant ♩=NN tempo mark (`drawMetronomeMarks`) + feel words from the page (view-only `buildRenderDoc` clone) — they collided and live in the topbar chips; the real DOM is untouched.
+- **Planning (CLAUDE.md rule 6, 3-milestone re-weigh):** promoted **title subline → M4**, **bar-highlight playhead → M5**, **basic Print → M7** (PRD §9 updated; A4 PDF generation stays post-MVP).
+- Verified: `tsc`/`eslint`/`vite build`; 26 deterministic command assertions; adversarial multi-agent review (2 findings handled).
+
+### M4–M8 ⏳ Planned
+
+- **M4** Global edits: Key (relabel), Transpose (rewrite pitches + key), Tempo (create-when-absent, sync sound↔metronome). **+ title subline** (Key·Tempo·Feel under the title, live). Round-trip identity test vs load baseline starts here.
+- **M5** Overlay projector + bar selection (logical→pixel anchors; ResizeObserver). **+ bar-highlight playhead** (full-measure highlight during playback).
 - **M6** Chord dropdown (root/quality/bass + enharmonic) writing `harmony` with conventional `kind/@text`.
-- **M7** Slashes (per-note notehead), draggable sections/annotations, Download (serialize → `.musicxml`, prolog preserved).
+- **M7** Slashes (per-note notehead), draggable sections/annotations, Download (serialize → `.musicxml`, prolog preserved). **+ Print** (`@media print`, score only).
 - **M8** Polish: toasts, empty/error states, keyboard shortcuts, design audit.
 
 ---
