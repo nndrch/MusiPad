@@ -100,3 +100,4 @@ Retroactive correctness/quality work on the M0/M1 base, plus PRD reframes. Merge
 - Audio→chart generation reference (portable): [`chord-chart-generation-reference.md`](./chord-chart-generation-reference.md)
 - Spikes / decisions: [`spikes.md`](./spikes.md)
 - Post-MVP backlog: [`post-mvp-improvements.md`](./post-mvp-improvements.md)
+- Open UI decisions (scoping worksheet, M5–M8): [`ui-decisions.md`](./ui-decisions.md)
