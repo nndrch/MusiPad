@@ -53,6 +53,7 @@ Build on the M2 chord-chart playback engine ([`src/audio/`](../src/audio/)). The
 **Scope / ideas:**
 
 - **Selectable instrument / synth voice** — let the user pick the playback timbre (piano, acoustic guitar, electric guitar, electric piano, organ, …) instead of the single built-in oscillator tone. The MVP deliberately uses a self-contained Web Audio oscillator synth (zero-dependency, offline, deterministic — see [`synth.ts`](../src/audio/synth.ts)); this swaps in sampled/soundfont instruments behind the same `Synth` interface, with a picker in the transport. (A guitar voice could also motivate strummed/arpeggiated voicings rather than block chords.)
+- **Mute the chord MIDI, keep the metronome — a play-along / rehearse mode.** A transport toggle that silences the realized chord audio but keeps the metronome clicking (and the M5 bar-highlight advancing). The musician plays along on their own instrument, reading the chart while the current bar highlights and the click keeps time — ideal for rehearsal. The transport already separates the two audio paths (chord scheduling vs `metronome` clicks in [`player.ts`](../src/audio/player.ts)) and the metronome toggle exists, so this is a "mute chords" switch alongside it (e.g. skip `synth.playChord` while the look-ahead loop and click scheduling run unchanged). Pairs naturally with the instrument picker above.
 
 **Promoted to a milestone** (no longer deferred):
 
