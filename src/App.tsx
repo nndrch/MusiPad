@@ -111,16 +111,33 @@ function Score({ doc, fileName, defaults, onClose }: ScoreProps) {
 
   const transport = useTransport(doc, osmd, renderTick);
 
+  // Bar selection (M5) — ephemeral *view* state, not a Command (Invariant #3
+  // governs DOM mutations; selection touches neither the DOM nor undo/redo).
+  // Cleared when a new score loads, via the adjust-state-in-render pattern
+  // (same as the banner below) to avoid a setState-in-effect cascade.
+  const [selectedMeasure, setSelectedMeasure] = useState<number | null>(null);
+  const [selectionDoc, setSelectionDoc] = useState(doc);
+  if (selectionDoc !== doc) {
+    setSelectionDoc(doc);
+    setSelectedMeasure(null);
+  }
+
   // Dismissible alert when defaults were assigned on load (PRD §11). Reset when
   // a new file loads (a fresh `defaults` object) by adjusting state in render.
-  const [dismissedFor, setDismissedFor] = useState<DefaultsApplied | null>(null);
+  const [dismissedFor, setDismissedFor] = useState<DefaultsApplied | null>(
+    null,
+  );
   if (dismissedFor !== null && dismissedFor !== defaults) setDismissedFor(null);
   const showBanner =
     (defaults.key || defaults.tempo) && dismissedFor !== defaults;
 
-  // Keyboard: ⌘Z / Ctrl+Z undo, ⌘⇧Z / Ctrl+Shift+Z redo.
+  // Keyboard: Esc clears bar selection (M5); ⌘Z / Ctrl+Z undo, ⌘⇧Z redo.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setSelectedMeasure(null);
+        return;
+      }
       if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return;
       e.preventDefault();
       if (e.shiftKey) redo();
@@ -157,6 +174,11 @@ function Score({ doc, fileName, defaults, onClose }: ScoreProps) {
         info={info}
         onRendered={handleRendered}
         revision={revision}
+        selectedMeasure={selectedMeasure}
+        onSelectMeasure={setSelectedMeasure}
+        onSeekMeasure={transport.seekToMeasure}
+        playingMeasure={transport.state.currentMeasure}
+        isPlaying={transport.state.isPlaying}
       />
       <Transport controls={transport} />
     </div>

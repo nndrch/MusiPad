@@ -17,6 +17,8 @@ export interface TransportControls {
   state: TransportState;
   toggle: () => void;
   seek: (sec: number) => void;
+  /** Move the playhead to a measure's start; continues if playing (M5). */
+  seekToMeasure: (measureIndex: number) => void;
   setMetronome: (enabled: boolean) => void;
 }
 
@@ -25,6 +27,7 @@ const INITIAL_STATE: TransportState = {
   durationSec: 0,
   isPlaying: false,
   metronome: false,
+  currentMeasure: -1,
 };
 
 export function useTransport(
@@ -59,35 +62,35 @@ export function useTransport(
   useEffect(() => {
     const player = playerRef.current;
     if (!player || !doc || !osmd) return;
-    player.load(buildSchedule(doc), makeCursorController(osmd));
+    player.load(buildSchedule(doc), makeCursorController());
   }, [doc, osmd, renderTick]);
 
   const toggle = useCallback(() => playerRef.current?.toggle(), []);
   const seek = useCallback((sec: number) => playerRef.current?.seek(sec), []);
+  const seekToMeasure = useCallback(
+    (measureIndex: number) => playerRef.current?.seekToMeasure(measureIndex),
+    [],
+  );
   const setMetronome = useCallback(
     (enabled: boolean) => playerRef.current?.setMetronome(enabled),
     [],
   );
 
-  return { state, toggle, seek, setMetronome };
+  return { state, toggle, seek, seekToMeasure, setMetronome };
 }
 
-/** Adapt OSMD's cursor to the engine's `CursorController` (PRD §9 M2 playhead). */
-function makeCursorController(osmd: OpenSheetMusicDisplay): CursorController {
+/**
+ * The visual playhead in M5 is the full-bar overlay highlight (decision B5.5,
+ * driven by `TransportState.currentMeasure`), so OSMD's own cursor is left
+ * fully disabled: a no-op controller means the Player never calls `show()` on
+ * OSMD's default cursor (which otherwise renders a stray green box over the
+ * current note). The engine keeps its `CursorController` seam for the future.
+ */
+function makeCursorController(): CursorController {
   return {
-    // Reposition only — visibility is controlled separately so the playhead
-    // stays hidden in the idle state and only appears once playback/scrub starts.
-    reset() {
-      osmd.cursor?.reset();
-    },
-    next() {
-      osmd.cursor?.next();
-    },
-    show() {
-      osmd.cursor?.show();
-    },
-    hide() {
-      osmd.cursor?.hide();
-    },
+    reset() {},
+    next() {},
+    show() {},
+    hide() {},
   };
 }

@@ -66,6 +66,13 @@ export interface PlaybackSchedule {
   metronome: MetroBeat[];
   /** Sorted, non-empty, first segment at quarter 0 (default BPM if file had none). */
   tempoSegments: TempoSegment[];
+  /**
+   * Start position (in quarter-beats) of each measure, in document order —
+   * one entry per `<measure>` of the primary part. Lets the transport map a
+   * playback position to the current measure index for the bar-highlight
+   * playhead (M5), in lockstep with the audio clock (no OSMD dependency).
+   */
+  measureStartQuarters: number[];
   /** Total length of the chart in quarter-beats. */
   totalQuarters: number;
   /** Total length in seconds (via the tempo map). */
@@ -79,10 +86,7 @@ export const DEFAULT_BPM = 120;
  * Convert a quarter-beat position to seconds under a piecewise-constant tempo
  * map. `segments` must be sorted by `startQuarter`, non-empty, and begin at 0.
  */
-export function quarterToSeconds(
-  q: number,
-  segments: TempoSegment[],
-): number {
+export function quarterToSeconds(q: number, segments: TempoSegment[]): number {
   let seconds = 0;
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
@@ -106,6 +110,7 @@ export function buildSchedule(doc: Document): PlaybackSchedule {
   const chords: ChordEvent[] = [];
   const metronome: MetroBeat[] = [];
   const tempoSegments: TempoSegment[] = [];
+  const measureStartQuarters: number[] = [];
 
   if (!part) {
     return emptySchedule();
@@ -124,6 +129,7 @@ export function buildSchedule(doc: Document): PlaybackSchedule {
   const measures = part.querySelectorAll(':scope > measure');
   for (const measure of measures) {
     const measureStartQuarter = cursorQuarter;
+    measureStartQuarters.push(measureStartQuarter);
     let posInMeasureQuarter = 0; // position within this measure, in quarters
 
     for (const el of Array.from(measure.children)) {
@@ -144,7 +150,11 @@ export function buildSchedule(doc: Document): PlaybackSchedule {
             el.tagName === 'sound' ? el : el.querySelector('sound[tempo]');
           const bpm = numberFrom(sound?.getAttribute('tempo') ?? null);
           if (bpm && bpm > 0) {
-            addTempo(tempoSegments, measureStartQuarter + posInMeasureQuarter, bpm);
+            addTempo(
+              tempoSegments,
+              measureStartQuarter + posInMeasureQuarter,
+              bpm,
+            );
           }
           break;
         }
@@ -166,15 +176,19 @@ export function buildSchedule(doc: Document): PlaybackSchedule {
           // A <chord/> note stacks on the previous one (same onset, no advance);
           // it adds no new beat to the slash grid — skip it.
           if (el.querySelector(':scope > chord')) break;
-          const durTicks = numberFrom(el.querySelector(':scope > duration')) ?? 0;
+          const durTicks =
+            numberFrom(el.querySelector(':scope > duration')) ?? 0;
           const durQuarter = divisions > 0 ? durTicks / divisions : 0;
           // Every note (slash or rest) is a beat the playhead steps through.
-          onsets.push({ startQuarter: measureStartQuarter + posInMeasureQuarter });
+          onsets.push({
+            startQuarter: measureStartQuarter + posInMeasureQuarter,
+          });
           posInMeasureQuarter += durQuarter;
           break;
         }
         case 'backup': {
-          const durTicks = numberFrom(el.querySelector(':scope > duration')) ?? 0;
+          const durTicks =
+            numberFrom(el.querySelector(':scope > duration')) ?? 0;
           posInMeasureQuarter -= divisions > 0 ? durTicks / divisions : 0;
           // A malformed/over-long backup must not drive the position negative,
           // which would corrupt every following measure's start.
@@ -182,7 +196,8 @@ export function buildSchedule(doc: Document): PlaybackSchedule {
           break;
         }
         case 'forward': {
-          const durTicks = numberFrom(el.querySelector(':scope > duration')) ?? 0;
+          const durTicks =
+            numberFrom(el.querySelector(':scope > duration')) ?? 0;
           posInMeasureQuarter += divisions > 0 ? durTicks / divisions : 0;
           break;
         }
@@ -202,7 +217,8 @@ export function buildSchedule(doc: Document): PlaybackSchedule {
     // The measure's actual length is what its content summed to; fall back to
     // the nominal bar length when the measure is empty.
     const nominalBarQuarter = beats * (4 / beatType);
-    cursorQuarter = measureStartQuarter + (posInMeasureQuarter || nominalBarQuarter);
+    cursorQuarter =
+      measureStartQuarter + (posInMeasureQuarter || nominalBarQuarter);
   }
 
   const totalQuarters = cursorQuarter;
@@ -215,7 +231,11 @@ export function buildSchedule(doc: Document): PlaybackSchedule {
     const nextStart = harmonyEvents[i + 1]?.atQuarter ?? totalQuarters;
     const durationQuarter = nextStart - ev.atQuarter;
     if (durationQuarter > 0) {
-      chords.push({ startQuarter: ev.atQuarter, durationQuarter, pitches: ev.pitches });
+      chords.push({
+        startQuarter: ev.atQuarter,
+        durationQuarter,
+        pitches: ev.pitches,
+      });
     }
   }
 
@@ -229,6 +249,7 @@ export function buildSchedule(doc: Document): PlaybackSchedule {
     chords,
     metronome,
     tempoSegments,
+    measureStartQuarters,
     totalQuarters,
     totalSeconds: quarterToSeconds(totalQuarters, tempoSegments),
   };
@@ -246,7 +267,8 @@ function addTempo(segments: TempoSegment[], startQuarter: number, bpm: number) {
 }
 
 function numberFrom(source: Element | string | null): number | null {
-  const text = typeof source === 'string' ? source : (source?.textContent ?? null);
+  const text =
+    typeof source === 'string' ? source : (source?.textContent ?? null);
   if (text == null) return null;
   const n = Number.parseFloat(text);
   return Number.isNaN(n) ? null : n;
@@ -258,6 +280,7 @@ function emptySchedule(): PlaybackSchedule {
     chords: [],
     metronome: [],
     tempoSegments: [{ startQuarter: 0, bpm: DEFAULT_BPM }],
+    measureStartQuarters: [],
     totalQuarters: 0,
     totalSeconds: 0,
   };
