@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  CursorType,
   OpenSheetMusicDisplay,
   type IOSMDOptions,
 } from 'opensheetmusicdisplay';
@@ -42,13 +41,10 @@ const OSMD_OPTIONS: IOSMDOptions = {
   // mark is redundant on the page (and collided with the feel words). The feel
   // words themselves are stripped in `buildRenderDoc` (no OSMD flag for them).
   drawMetronomeMarks: false,
-  // The playback cursor (M2) — a thin orange line at the current onset. Created
-  // here so `osmd.cursor` exists after render; the transport drives it.
-  // `follow: false` because OsmdView renders into a fixed-width scaled page, so
-  // we don't want OSMD's own auto-scroll fighting that transform.
-  cursorsOptions: [
-    { type: CursorType.ThinLeft, color: '#e8590c', alpha: 0.5, follow: false },
-  ],
+  // No OSMD cursor in M5: the thin-line playhead (M2) is replaced by the
+  // full-bar highlight in the HTML overlay (decision B5.5), driven by the
+  // transport's `currentMeasure`. The Player's CursorController calls become
+  // harmless no-ops (`osmd.cursor` is undefined without `cursorsOptions`).
 };
 
 /**
@@ -62,7 +58,9 @@ const OSMD_OPTIONS: IOSMDOptions = {
 function buildRenderDoc(doc: Document): Document {
   const clone = doc.cloneNode(true) as Document;
   const firstMeasure = clone.querySelector('part > measure');
-  const feelWords = firstMeasure?.querySelector('direction direction-type words');
+  const feelWords = firstMeasure?.querySelector(
+    'direction direction-type words',
+  );
   feelWords?.closest('direction')?.remove();
   return clone;
 }

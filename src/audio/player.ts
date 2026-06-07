@@ -38,6 +38,12 @@ export interface TransportState {
   durationSec: number;
   isPlaying: boolean;
   metronome: boolean;
+  /**
+   * Index of the measure the playhead is currently inside (the bar-highlight
+   * playhead, M5), or -1 when there are no measures. Derived from the same
+   * audio clock as everything else, so the highlight stays in step with sound.
+   */
+  currentMeasure: number;
 }
 
 const LOOKAHEAD_SEC = 0.12; // schedule this far ahead of the playhead
@@ -59,6 +65,8 @@ export class Player {
   private onsetSecs: number[] = [];
   private metroSecs: number[] = [];
   private metroAccents: boolean[] = [];
+  // Start time (sec) of each measure — for the bar-highlight playhead (M5).
+  private measureSecs: number[] = [];
   private durationSec = 0;
 
   private playing = false;
@@ -105,6 +113,9 @@ export class Player {
       quarterToSeconds(m.startQuarter, schedule.tempoSegments),
     );
     this.metroAccents = schedule.metronome.map((m) => m.isDownbeat);
+    this.measureSecs = schedule.measureStartQuarters.map((q) =>
+      quarterToSeconds(q, schedule.tempoSegments),
+    );
     this.durationSec = schedule.totalSeconds;
 
     this.playing = false;
@@ -165,11 +176,24 @@ export class Player {
     this.emit();
   }
 
+  /**
+   * Move the playhead to the start of measure `i` (clamped) and, if playing,
+   * keep playing from there — the click-a-bar-to-seek interaction (M5). No-op
+   * for an out-of-range index or a schedule with no measures.
+   */
+  seekToMeasure(i: number): void {
+    if (i < 0 || i >= this.measureSecs.length) return;
+    this.seek(this.measureSecs[i]);
+  }
+
   setMetronome(enabled: boolean): void {
     this.metronomeEnabled = enabled;
     // Don't backfill clicks: resume scheduling from the current playhead.
     if (this.playing) {
-      this.nextMetroIdx = firstIndexAtOrAfter(this.metroSecs, this.getPosition());
+      this.nextMetroIdx = firstIndexAtOrAfter(
+        this.metroSecs,
+        this.getPosition(),
+      );
     }
     this.emit();
   }
@@ -300,12 +324,20 @@ export class Player {
     }
   }
 
+  /** Measure index containing `sec` (largest start ≤ sec); -1 if no measures. */
+  private measureAt(sec: number): number {
+    if (this.measureSecs.length === 0) return -1;
+    return onsetIndexAt(this.measureSecs, sec);
+  }
+
   private emit(): void {
+    const pos = this.getPosition();
     this.onChange({
-      positionSec: this.getPosition(),
+      positionSec: pos,
       durationSec: this.durationSec,
       isPlaying: this.playing,
       metronome: this.metronomeEnabled,
+      currentMeasure: this.measureAt(pos),
     });
   }
 }

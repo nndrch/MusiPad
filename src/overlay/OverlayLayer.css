@@ -1,0 +1,54 @@
+/*
+ * Overlay layer over OSMD's SVG (M5). The container is click-through; only the
+ * per-bar boxes capture pointer events. Fills are translucent so the staff and
+ * notes stay legible. Visual language (decided for M5): selection = grayscale
+ * wash, playing = orange wash (hue distinguishes the two), hover = faint gray.
+ */
+.overlay-layer {
+  position: absolute;
+  pointer-events: none; /* clicks fall through to the desk (deselect) … */
+  z-index: 1;
+}
+
+.overlay-bar {
+  position: absolute;
+  pointer-events: auto; /* … except the bars themselves */
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: transparent;
+  transition: background-color 90ms ease;
+}
+
+/* Edit-mode (not playing) bar hover is intentionally DISABLED — hovering a
+   whole bar to edit it is irrelevant; the real edit affordances are per-figure
+   (select a slash → ＋ add chord; click a chord → edit), which arrive in M6/M7.
+   Kept here, commented, so it's easy to revisit:
+.overlay-bar:hover {
+  background: rgba(120, 119, 116, 0.06);
+}
+*/
+
+/* Idle bars show NO hover affordance (decided with the MuseScore model): the
+   hover cue belongs to individual items (notes/chords/sections), added in
+   M6/M7. Selecting a bar draws a warm-gray border + a light warm-gray fill —
+   two shades (alphas) of the same warm gray (`--text-muted`'s rgb), never the
+   accent (reserved for playback). Fills are translucent so the staff/notes
+   stay legible under the overlay; `box-shadow: inset` keeps the 2px border
+   inside the box so adjacent bars don't overlap and layout never shifts. */
+.overlay-bar.is-selected {
+  background: rgba(120, 119, 116, 0.1); /* light warm-gray fill */
+  box-shadow: inset 0 0 0 2px rgba(120, 119, 116, 0.5); /* warm-gray border */
+}
+
+/* Playing: orange wash — the playhead (replaces the M2 thin-line cursor, B5.5).
+   Distinguished from selection by hue, per the M5 decision. */
+.overlay-bar.is-playing,
+.overlay-bar.is-playing.is-selected {
+  background: rgba(232, 89, 12, 0.16);
+}
+
+/* While playing, hovering a *non-playing* bar previews it in light orange and
+   the cursor invites a click — which seeks the playhead there (B). */
+.overlay-layer.is-playing-mode .overlay-bar:hover:not(.is-playing) {
+  background: rgba(232, 89, 12, 0.08);
+}

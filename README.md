@@ -20,4 +20,4 @@ npm run format       # Prettier
 
 ## Status
 
-Built in milestones M0 → M8 (see PRD §9; live status in [`docs/roadmap.md`](./docs/roadmap.md)). Shipped so far: **M0–M4**. Latest — **M4 — Global edits (Key, Transpose, Tempo)**: a toolbar to relabel the key, transpose the whole chart (pitches + key + chords, key-aware spelling), and set the tempo — all undoable. Plus a live document header (title + Key · Tempo subline) and load-time defaults (C major / 120 BPM) with a dismissible alert when a file is missing them.
+Built in milestones M0 → M8 (see PRD §9; live status in [`docs/roadmap.md`](./docs/roadmap.md)). Shipped so far: **M0–M5**. Latest — **M5 — Overlay projector + Selection + bar-highlight playhead**: an HTML overlay over the score (measure boxes derived from OSMD's graphics, riding the zoom-to-fit transform) for **click-to-select a bar** (grayscale border + fill) and a full-bar **orange playing highlight** that replaces the old thin-line cursor, **auto-scrolls** to keep the playing bar in view, and lets you **click a bar to seek** while playing. Editing individual chords/figures comes in M6.

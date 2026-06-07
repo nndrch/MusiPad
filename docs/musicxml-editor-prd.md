@@ -151,7 +151,9 @@ Calm, content-first, almost chrome-less. The score is the document; controls are
 
 ### 6.4 Feedback
 
-- Selected element: 2px `--accent` outline + `--accent-tint` fill.
+- **Selected bar:** a **warm-gray border + light warm-gray fill** (translucent, so the staff stays legible) — _not_ the accent. **Decided in M5** (`docs/ui-decisions.md` A2/B5.1/B5.4): the single orange accent is reserved for the **playback position**, so selection and the playing bar are distinguished by _hue_ (gray vs orange) and can never be confused. Idle bars show no hover affordance (the hover cue belongs to individual items — see below); Esc or a click on empty desk deselects. _(This supersedes the original "2px accent outline + accent-tint fill" selection styling.)_
+- **Playing bar:** a soft orange `--accent-tint` wash over the whole current measure — the playhead (M5 replaced M2's thin-line cursor with this). While playing, hovering another bar previews it in light orange and a click **seeks** the playhead there and continues.
+- **Item-level (M6/M7):** hovering an individual item (note, chord, section/annotation) highlights **just that item in 100% accent**, and selecting a bar highlights all items inside it. Editing is figure-level: select a slash → **＋** add a chord; click a chord → **edit** it (chord audition happens inside the editor). Deferred to M6 (chords) / M7 (sections) — needs per-item projection (`docs/ui-decisions.md` B6/B7).
 - Undo/redo buttons disabled (faint) when stack is empty.
 - Toast (quiet, bottom-left) on Download and on parse errors.
 
@@ -288,12 +290,13 @@ Each milestone is independently runnable and demoable.
 - **Note (build):** the read-only Key/Tempo/Feel topbar chips (M1) were removed as redundant with the toolbar controls + the title subline. The subline shows Key · Tempo; the title renders as an HTML document header on the score sheet, which keeps A4 proportions.
 - **AC:** Each is a command (undoable). Transpose +2 then −2 → DOM identical to the load baseline. Tempo change audibly changes playback (creating `sound[@tempo]`/`metronome` if the file had none, keeping the two in sync). The title subline shows Key/Tempo and updates when they're edited.
 
-### M5 — Overlay projector + Selection
+### M5 — Overlay projector + Selection + bar-highlight playhead + auto-scroll
 
-- Build the HTML overlay layer; derive measure boxes + per-beat anchors from OSMD graphics; logical→pixel projection on render/resize.
-- Bar selection (click bar background → accent outline).
-- **Bar-highlight playhead** (promoted from post-MVP P3): drive the same measure-box highlight from the transport so the **whole current measure** is highlighted during playback (the M2 thin-line cursor becomes a full-bar `--accent-tint` fill).
-- **AC:** Anchors sit correctly over beats; survive resize; bar selection visible; during playback the current measure is highlighted and advances in time.
+- Build the HTML overlay layer; derive measure boxes from OSMD graphics; logical→pixel projection on render. The overlay is mounted **inside the scaled layer**, so the existing zoom-to-fit `transform: scale()` re-projects it for free on resize (still Invariant #4: derived from OSMD graphics every render, never persisted as pixels). Per-beat anchors are computed as **invisible scaffolding** here (B5.7) and rendered only from M6.
+- Bar selection (click bar background). **Decided (§6.4, `docs/ui-decisions.md`):** selection is a **grayscale fill**, _not_ the accent — the accent is reserved for the playing bar, so the two are distinguished by hue. Faint gray hover; Esc / desk-click to deselect.
+- **Bar-highlight playhead** (promoted from post-MVP P3): drive a full-measure highlight from the transport so the **whole current measure** gets a soft orange `--accent-tint` wash during playback — **replacing** the M2 thin-line cursor (which is fully disabled). Driven by `TransportState.currentMeasure`, computed in the `Player` from the schedule's `measureStartQuarters` (off the same audio clock, no OSMD dependency).
+- **Auto-scroll** (promoted from post-MVP P3): keep the playing bar in view during playback, nudging only when it drifts outside a comfortable band so it doesn't fight the user.
+- **AC:** Bars sit correctly over the measures; survive resize; bar selection visible (grayscale); during playback the current measure is highlighted (orange) and advances in time; the playing bar auto-scrolls into view on long charts.
 
 ### M6 — Chords (dropdown)
 
