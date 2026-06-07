@@ -8,28 +8,28 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 
 ## Current state (2026-06-07)
 
-- **Shipped:** M0 (Scaffold), M1 (Load + Render), M2 (Playback), M3 (Command layer + Undo/Redo), **M4 (Global edits)** are all merged to `main` (M4 via [PR #6](https://github.com/nndrch/MusiPad/pull/6), `784cd81`).
-- **In flight:** **M5 — Overlay projector + Selection + bar-highlight playhead + auto-scroll** on `feat/m5-overlay-projector` — the HTML overlay layer (logical→pixel measure boxes from OSMD graphics, riding the zoom-to-fit transform), click-to-select bars (**grayscale**), a full-bar **orange** playing highlight that replaces M2's thin-line cursor, and auto-scroll to keep the playing bar in view. Acceptance criteria verified live (headless Chromium pass: alignment, selection, deselect, edit re-projection, playhead advance, auto-scroll). UI decisions for M5 were settled first in [`ui-decisions.md`](./ui-decisions.md).
+- **Shipped:** M0 (Scaffold), M1 (Load + Render), M2 (Playback), M3 (Command layer + Undo/Redo), M4 (Global edits), **M5 (Overlay projector + Selection + bar-highlight playhead)** are all merged to `main` (M4 [PR #6](https://github.com/nndrch/MusiPad/pull/6) `784cd81`; M5 [PR #7](https://github.com/nndrch/MusiPad/pull/7) `91207eb`).
+- **Latest:** **M5** — the HTML overlay layer (logical→pixel measure boxes from OSMD graphics, riding the zoom-to-fit transform), **click-to-select** bars (**grayscale** border + fill), a full-bar **orange** playing highlight that replaces M2's thin-line cursor, **auto-scroll** to keep the playing bar in view, and **click-a-bar-to-seek** while playing. UI decisions for M5 were settled first in [`ui-decisions.md`](./ui-decisions.md); chord add/edit + figure interactions are specced for M6.
 - **Live preview:** https://musipad.vercel.app (Vercel project `nndrchs-projects/musipad`; GitHub connected → pushes to `main` deploy production, branches/PRs get preview URLs).
 - **Planning:** a 3-milestone post-MVP re-weigh (CLAUDE.md rule 6) at M3 promoted three low-hanging items into milestones — **title subline → M4** (shipped), **bar-highlight playhead → M5**, **basic Print → M7**. During M5 scoping the human also pulled **auto-scroll → M5** (was post-MVP P3). A4 PDF generation stays post-MVP.
-- **Next milestone:** **M6 — Chords (dropdown)** — after M5 merges.
+- **Next milestone:** **M6 — Chords (dropdown)** — chord add/edit popover (select slash → ＋ add; click chord → edit), figure hover → accent, in-editor chord audition.
 
 ---
 
 ## Milestone status
 
-| #   | Milestone                                                            | Status       | PR                                                      | Merge / commit        |
-| --- | -------------------------------------------------------------------- | ------------ | ------------------------------------------------------- | --------------------- |
-| M0  | Scaffold                                                             | ✅ Done      | — (direct to `main`)                                    | `2583d81`, `166d61a`  |
-| M1  | Load + Render (+ ScoreIO)                                            | ✅ Done      | [#1](https://github.com/nndrch/MusiPad/pull/1) (merged) | `99fbb78` ← `9dd4d14` |
-| —   | W3C-compliance + lead-sheet pass                                     | ✅ Done      | [#2](https://github.com/nndrch/MusiPad/pull/2) (merged) | see PR #2             |
-| M2  | Playback (chord-chart realization)                                   | ✅ Done      | [#4](https://github.com/nndrch/MusiPad/pull/4) (merged) | `315a792`             |
-| M3  | Command layer + Undo/Redo                                            | ✅ Done      | [#5](https://github.com/nndrch/MusiPad/pull/5) (merged) | `0df417b`             |
-| M4  | Global edits (Key, Transpose, Tempo) + title subline                 | ✅ Done      | [#6](https://github.com/nndrch/MusiPad/pull/6)          | `784cd81`             |
-| M5  | Overlay projector + Selection + bar-highlight playhead + auto-scroll | 🟡 In flight | `feat/m5-overlay-projector`                             | —                     |
-| M6  | Chords (dropdown)                                                    | ⏳ Planned   | —                                                       | —                     |
-| M7  | Slashes, Sections, Annotations, Download + Print                     | ⏳ Planned   | —                                                       | —                     |
-| M8  | Polish                                                               | ⏳ Planned   | —                                                       | —                     |
+| #   | Milestone                                                            | Status     | PR                                                      | Merge / commit        |
+| --- | -------------------------------------------------------------------- | ---------- | ------------------------------------------------------- | --------------------- |
+| M0  | Scaffold                                                             | ✅ Done    | — (direct to `main`)                                    | `2583d81`, `166d61a`  |
+| M1  | Load + Render (+ ScoreIO)                                            | ✅ Done    | [#1](https://github.com/nndrch/MusiPad/pull/1) (merged) | `99fbb78` ← `9dd4d14` |
+| —   | W3C-compliance + lead-sheet pass                                     | ✅ Done    | [#2](https://github.com/nndrch/MusiPad/pull/2) (merged) | see PR #2             |
+| M2  | Playback (chord-chart realization)                                   | ✅ Done    | [#4](https://github.com/nndrch/MusiPad/pull/4) (merged) | `315a792`             |
+| M3  | Command layer + Undo/Redo                                            | ✅ Done    | [#5](https://github.com/nndrch/MusiPad/pull/5) (merged) | `0df417b`             |
+| M4  | Global edits (Key, Transpose, Tempo) + title subline                 | ✅ Done    | [#6](https://github.com/nndrch/MusiPad/pull/6)          | `784cd81`             |
+| M5  | Overlay projector + Selection + bar-highlight playhead + auto-scroll | ✅ Done    | [#7](https://github.com/nndrch/MusiPad/pull/7)          | `91207eb`             |
+| M6  | Chords (dropdown)                                                    | ⏳ Planned | —                                                       | —                     |
+| M7  | Slashes, Sections, Annotations, Download + Print                     | ⏳ Planned | —                                                       | —                     |
+| M8  | Polish                                                               | ⏳ Planned | —                                                       | —                     |
 
 Legend: ✅ done · 🟡 in flight · ⏳ not started.
 
@@ -84,9 +84,9 @@ Retroactive correctness/quality work on the M0/M1 base, plus PRD reframes. Merge
 - Round-trip identity test vs the load baseline starts here (transpose `+n`/`−n`).
 - Verified: `tsc`/`eslint`/`vite build`; **63** deterministic command assertions; adversarial multi-agent review (5 findings handled — incl. the transpose ±7 overflow crash and the tempo `<direction>` child-order).
 
-### M5 — Overlay projector + Selection + bar-highlight playhead + auto-scroll 🟡 (in flight)
+### M5 — Overlay projector + Selection + bar-highlight playhead + auto-scroll ✅ (PR #7)
 
-- Branch `feat/m5-overlay-projector` (PR pending). UI decisions settled first ([`ui-decisions.md`](./ui-decisions.md) A2/B5.\*): **selection = warm-gray border + light fill** (MuseScore-style), **playing = orange** wash — distinguished by _hue_ so they never collide; **no idle bar hover** (the hover cue is reserved for individual items in M6/M7); Esc / desk-click deselect; **click-a-bar-to-seek while playing** (light-orange playing-mode hover); auto-scroll pulled into M5; beat anchors are invisible scaffolding (rendered from M6). Edit-mode bar hover is **disabled** (commented off; editing is figure-level). Item-level interactions — figure hover→accent, in-bar item highlight, and the **chord add/edit popover** (select slash → ＋ add; click chord → edit/Update) with in-editor **chord audition** — were specced from the human's mockups but deferred to **M6/M7** (need per-item projection — B6/B7).
+- **PR [#7](https://github.com/nndrch/MusiPad/pull/7)** (`feat/m5-overlay-projector` → `main`); feature commit `91207eb`. UI decisions settled first ([`ui-decisions.md`](./ui-decisions.md) A2/B5.\*): **selection = warm-gray border + light fill** (MuseScore-style), **playing = orange** wash — distinguished by _hue_ so they never collide; **no idle bar hover** (the hover cue is reserved for individual items in M6/M7); Esc / desk-click deselect; **click-a-bar-to-seek while playing** (light-orange playing-mode hover); auto-scroll pulled into M5; beat anchors are invisible scaffolding (rendered from M6). Edit-mode bar hover is **disabled** (commented off; editing is figure-level). Item-level interactions — figure hover→accent, in-bar item highlight, and the **chord add/edit popover** (select slash → ＋ add; click chord → edit/Update) with in-editor **chord audition** — were specced from the human's mockups but deferred to **M6/M7** (need per-item projection — B6/B7).
 - Delivered: `overlay/projector` (measure boxes from `osmd.GraphicSheet.MeasureList`; **self-calibrated** px-per-unit from the rendered SVG width vs the page's unit width — no reliance on OSMD's un-typed `UnitInPixels`; vertical band per `ParentMusicSystem` to cover the chord row), `overlay/useMeasureBoxes` (re-projects on each render; derives the overlay frame from the **host** element + its padding since svg elements lack `offsetLeft`), `overlay/OverlayLayer` (mounted inside `.osmd-scale` so it rides the zoom-to-fit transform; click-to-select, hover, playing highlight, auto-scroll). Schedule gains `measureStartQuarters`; `Player` computes `TransportState.currentMeasure` off the audio clock. Selection is **ephemeral view state in `App`/`Score`**, not a Command (Invariant #3 governs DOM mutations only).
 - **Key decisions:** the M2 OSMD cursor is fully disabled — removing `cursorsOptions` still left OSMD's _default_ cursor (a stray green box), so the `CursorController` adapter is now a no-op; the full-bar highlight is the sole playhead (B5.5). Overlay coords are computed once per render in unscaled space; resize is handled by the shared CSS transform (no per-resize recompute), still Invariant-#4 compliant.
 - Verified: `eslint`/`tsc`/`vite build`; headless-Chromium live pass (10/10) — box alignment within the SVG, one box per measure, single-select, Esc + desk-click deselect, **overlay re-projects after a transpose edit**, playing highlight advances (m0→m1→…), no visible OSMD cursor, auto-scroll on a constrained viewport.
