@@ -110,3 +110,17 @@ The score renders at a fixed `NATURAL_WIDTH` and scales proportionally to fit th
 - Consider touch-target sizing for bar selection / future chord targets at that scale.
 
 **Why deferred:** PRD §3 lists **"No mobile-first layout (desktop browser is the target)"** as a PoC non-goal. The zoom-to-fit model already keeps the chart usable when scaled; a true small-screen reading mode is a responsiveness enhancement on top of the working desktop layout. _(Requested 2026-06-07 during the M5 build.)_
+
+---
+
+## P7 — Meter / time-signature editing
+
+Today the chart's **meter (e.g. `4/4`) can't be edited.** M4 added the global edits (Key / Transpose / Tempo) but not the time signature, and meter editing isn't in the PRD §9 milestones. _(Requested 2026-06-08, after M6a.)_
+
+**Scope / ideas:**
+
+- Make the time signature on the staff **hover/click-editable the same way as chords** (M6): hover the `4/4` → an editable popover (a small "beats / beat-type" picker, reusing the A1 popover + the figure-level overlay pattern from `overlay/ChordLayer`). Commit via an undoable `Command` that patches `attributes/time` (`beats` + `beat-type`), preserving siblings (`@symbol`, `interchangeable`, `senza-misura`) per Invariant #2.
+- **Not just a label:** meter feeds the beat math — the metronome click grid and measure lengths in [`schedule.ts`](../src/audio/schedule.ts) and the slash-rhythm grid — so an edit must re-derive playback + re-project the overlay. Mid-piece meter changes (multiple `<time>`) are a further wrinkle; PoC scope could limit to the first/active meter like Key does.
+- Positioning the time-signature affordance reuses the M6 staff-entry/measure-box projection.
+
+**Why deferred:** New editing capability beyond the MVP milestone scope (M0–M8). It's a natural extension of the M6/M7 figure-level overlay editing; weigh it in the next 3-milestone post-MVP re-weigh (due after M6b) for promotion into M7 or a follow-up milestone. Logged in [`roadmap.md`](./roadmap.md) under _Captured requests_.

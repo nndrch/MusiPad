@@ -6,31 +6,33 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 
 ---
 
-## Current state (2026-06-07)
+## Current state (2026-06-08)
 
-- **Shipped:** M0 (Scaffold), M1 (Load + Render), M2 (Playback), M3 (Command layer + Undo/Redo), M4 (Global edits), **M5 (Overlay projector + Selection + bar-highlight playhead)** are all merged to `main` (M4 [PR #6](https://github.com/nndrch/MusiPad/pull/6) `784cd81`; M5 [PR #7](https://github.com/nndrch/MusiPad/pull/7) `91207eb`).
-- **In flight:** **M6 — Chords**, split into two PRs. **M6a** (own HTML chord pills matching OSMD's engraving + the chord editor — an editable combobox — to add / edit / remove, undoable, with in-editor audition) is **built on `feat/m6a-chords`** — PR pending. **M6b** (structured root/quality/bass picker + enharmonic toggle + right-click respell) is next.
+- **Shipped:** M0 (Scaffold), M1 (Load + Render), M2 (Playback), M3 (Command layer + Undo/Redo), M4 (Global edits), **M5 (Overlay projector + Selection + bar-highlight playhead)**, and **M6a (Chords — own pills + editable-combobox editor)** are all merged to `main` (M4 [PR #6](https://github.com/nndrch/MusiPad/pull/6) `784cd81`; M5 [PR #7](https://github.com/nndrch/MusiPad/pull/7) `91207eb`; M6a [PR #9](https://github.com/nndrch/MusiPad/pull/9) `ca9160d`).
+- **In flight:** **M6 — Chords**, split into two PRs. **M6a** (own HTML chord pills matching OSMD's engraving + the chord editor — an editable combobox — to add / edit / remove, undoable, with in-editor audition) is **merged** ([PR #9](https://github.com/nndrch/MusiPad/pull/9)). **M6b** (structured root/quality/bass picker + enharmonic toggle + right-click respell) is next.
 - **Latest merged:** **M5** — the HTML overlay layer (logical→pixel measure boxes from OSMD graphics, riding the zoom-to-fit transform), **click-to-select** bars (**grayscale** border + fill), a full-bar **orange** playing highlight that replaces M2's thin-line cursor, **auto-scroll** to keep the playing bar in view, and **click-a-bar-to-seek** while playing.
 - **Live preview:** https://musipad.vercel.app (Vercel project `nndrchs-projects/musipad`; GitHub connected → pushes to `main` deploy production, branches/PRs get preview URLs).
 - **Planning:** a 3-milestone post-MVP re-weigh (CLAUDE.md rule 6) at M3 promoted three low-hanging items into milestones — **title subline → M4** (shipped), **bar-highlight playhead → M5**, **basic Print → M7**. During M5 scoping the human also pulled **auto-scroll → M5** (was post-MVP P3). A4 PDF generation stays post-MVP. _(The next 3-milestone re-weigh is due when M6 fully ships, i.e. after M6b — CLAUDE.md rule 6.)_
 - **Next:** finish **M6b** (the structured picker + respell), then **M7 — Slashes, Sections, Annotations, Download + Print**.
+- **Captured requests (not yet scheduled):**
+  - **Meter / time-signature editing** — today the **meter (e.g. `4/4`) can't be edited** (M4 added Key / Transpose / Tempo, but not time signature, and it isn't in the PRD §9 milestones). Requested 2026-06-08: make the time signature on the staff **hover/click-editable the same way as chords** — reuse the M6 overlay-editor pattern (hover the `4/4` → editable popover, an undoable `Command` patching `attributes/time` `beats`/`beat-type`). Note this is more than a label change: meter feeds the beat math (`schedule.ts` metronome + measure lengths) and the slash grid, so the change must re-derive those. New scope beyond the MVP milestones — logged in [`post-mvp-improvements.md`](./post-mvp-improvements.md) **P7**; a natural fit alongside the M7 figure-level overlay editing, to weigh in the next post-MVP re-weigh (after M6b).
 
 ---
 
 ## Milestone status
 
-| #   | Milestone                                                            | Status       | PR                                                      | Merge / commit        |
-| --- | -------------------------------------------------------------------- | ------------ | ------------------------------------------------------- | --------------------- |
-| M0  | Scaffold                                                             | ✅ Done      | — (direct to `main`)                                    | `2583d81`, `166d61a`  |
-| M1  | Load + Render (+ ScoreIO)                                            | ✅ Done      | [#1](https://github.com/nndrch/MusiPad/pull/1) (merged) | `99fbb78` ← `9dd4d14` |
-| —   | W3C-compliance + lead-sheet pass                                     | ✅ Done      | [#2](https://github.com/nndrch/MusiPad/pull/2) (merged) | see PR #2             |
-| M2  | Playback (chord-chart realization)                                   | ✅ Done      | [#4](https://github.com/nndrch/MusiPad/pull/4) (merged) | `315a792`             |
-| M3  | Command layer + Undo/Redo                                            | ✅ Done      | [#5](https://github.com/nndrch/MusiPad/pull/5) (merged) | `0df417b`             |
-| M4  | Global edits (Key, Transpose, Tempo) + title subline                 | ✅ Done      | [#6](https://github.com/nndrch/MusiPad/pull/6)          | `784cd81`             |
-| M5  | Overlay projector + Selection + bar-highlight playhead + auto-scroll | ✅ Done      | [#7](https://github.com/nndrch/MusiPad/pull/7)          | `91207eb`             |
-| M6  | Chords (dropdown) — M6a pills + typed editor / M6b picker + respell  | 🟡 In flight | M6a: `feat/m6a-chords` (PR pending)                     | —                     |
-| M7  | Slashes, Sections, Annotations, Download + Print                     | ⏳ Planned   | —                                                       | —                     |
-| M8  | Polish                                                               | ⏳ Planned   | —                                                       | —                     |
+| #   | Milestone                                                              | Status      | PR                                                        | Merge / commit        |
+| --- | ---------------------------------------------------------------------- | ----------- | --------------------------------------------------------- | --------------------- |
+| M0  | Scaffold                                                               | ✅ Done     | — (direct to `main`)                                      | `2583d81`, `166d61a`  |
+| M1  | Load + Render (+ ScoreIO)                                              | ✅ Done     | [#1](https://github.com/nndrch/MusiPad/pull/1) (merged)   | `99fbb78` ← `9dd4d14` |
+| —   | W3C-compliance + lead-sheet pass                                       | ✅ Done     | [#2](https://github.com/nndrch/MusiPad/pull/2) (merged)   | see PR #2             |
+| M2  | Playback (chord-chart realization)                                     | ✅ Done     | [#4](https://github.com/nndrch/MusiPad/pull/4) (merged)   | `315a792`             |
+| M3  | Command layer + Undo/Redo                                              | ✅ Done     | [#5](https://github.com/nndrch/MusiPad/pull/5) (merged)   | `0df417b`             |
+| M4  | Global edits (Key, Transpose, Tempo) + title subline                   | ✅ Done     | [#6](https://github.com/nndrch/MusiPad/pull/6)            | `784cd81`             |
+| M5  | Overlay projector + Selection + bar-highlight playhead + auto-scroll   | ✅ Done     | [#7](https://github.com/nndrch/MusiPad/pull/7)            | `91207eb`             |
+| M6  | Chords (dropdown) — M6a pills + combobox editor / M6b picker + respell | 🟡 M6a done | M6a [#9](https://github.com/nndrch/MusiPad/pull/9); M6b — | `ca9160d` (M6a)       |
+| M7  | Slashes, Sections, Annotations, Download + Print                       | ⏳ Planned  | —                                                         | —                     |
+| M8  | Polish                                                                 | ⏳ Planned  | —                                                         | —                     |
 
 Legend: ✅ done · 🟡 in flight · ⏳ not started.
 
