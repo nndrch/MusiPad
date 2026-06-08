@@ -30,13 +30,23 @@ export interface MeasureBox {
   height: number;
 }
 
-/** A beat position within a measure (scaffold for M6 chord anchors). */
-export interface BeatAnchor {
+/**
+ * A single graphical note onset (staff entry) within a measure — the anchor for
+ * a chord pill / ＋ / slash target (M6). Derived from OSMD's laid-out note
+ * graphics (not a linear division), so it sits exactly over the slash/note.
+ * `entryIndex` is the 0-based ordinal of the *sounding* note in the measure,
+ * matching `commands/chord.ts`'s note addressing (chord-member notes share an
+ * entry and don't advance it).
+ */
+export interface StaffEntryAnchor {
   measureIndex: number;
-  /** 0-based beat within the measure. */
-  beat: number;
+  entryIndex: number;
+  /** Anchor x in unscaled px — the notehead position. */
   x: number;
-  y: number;
+  /** Top of the staff box in px — the chord row sits just above this. */
+  staffTopY: number;
+  /** Staff box height in px — the vertical extent of the slash hit target. */
+  staffHeight: number;
 }
 
 // Minimal structural views over OSMD's runtime objects (its `.d.ts` doesn't
@@ -56,6 +66,7 @@ interface BBox {
 interface GMeasure {
   PositionAndShape: BBox;
   ParentMusicSystem?: { PositionAndShape: BBox };
+  staffEntries?: { PositionAndShape: BBox }[];
 }
 
 /**
@@ -140,28 +151,41 @@ export function computeMeasureBoxes(
 }
 
 /**
- * Per-beat anchor positions — invisible scaffolding in M5 (B5.7); M6 renders
- * chord targets on them and may refine x from actual note graphics. Linear
- * division of each measure box by its time-signature beat count for now.
+ * One anchor per graphical note onset, in document order, across all measures
+ * (M6). Each carries the notehead x and its measure's staff band, so the chord
+ * layer can place a pill / ＋ over the right slash and a hit target on it. x
+ * comes from OSMD's actual note graphics — accurate across the clef/key/time
+ * indent of bar 1 and OSMD's non-linear spacing, unlike a linear beat division.
+ * The `entryIndex` aligns with `commands/chord.ts` note addressing. Returns `[]`
+ * before the first successful render.
  */
-export function computeBeatAnchors(
+export function computeStaffEntries(
   osmd: OpenSheetMusicDisplay,
-  boxes: MeasureBox[],
-): BeatAnchor[] {
-  const sources = osmd.Sheet?.SourceMeasures as
-    | { ActiveTimeSignature?: { Numerator?: number } }[]
+  svg: SVGElement | null,
+): StaffEntryAnchor[] {
+  const measureList = osmd.GraphicSheet?.MeasureList as
+    | GMeasure[][]
     | undefined;
-  const anchors: BeatAnchor[] = [];
+  if (!measureList || measureList.length === 0) return [];
 
-  for (const box of boxes) {
-    const beats = sources?.[box.measureIndex]?.ActiveTimeSignature?.Numerator;
-    const count = beats && beats > 0 ? beats : 4;
-    for (let beat = 0; beat < count; beat++) {
+  const k = pxPerUnit(osmd, svg);
+  const anchors: StaffEntryAnchor[] = [];
+
+  for (let mi = 0; mi < measureList.length; mi++) {
+    const gm = measureList[mi]?.[0];
+    if (!gm?.PositionAndShape) continue;
+    const { top, height } = boxTopHeight(gm.PositionAndShape);
+    const entries = gm.staffEntries ?? [];
+
+    for (let ei = 0; ei < entries.length; ei++) {
+      const bb = entries[ei]?.PositionAndShape;
+      if (!bb) continue;
       anchors.push({
-        measureIndex: box.measureIndex,
-        beat,
-        x: box.x + (box.width * beat) / count,
-        y: box.y,
+        measureIndex: mi,
+        entryIndex: ei,
+        x: bb.AbsolutePosition.x * k,
+        staffTopY: top * k,
+        staffHeight: height * k,
       });
     }
   }

@@ -48,6 +48,7 @@ export interface TransportState {
 
 const LOOKAHEAD_SEC = 0.12; // schedule this far ahead of the playhead
 const TICK_MS = 25; // how often we wake to schedule + update UI
+const PREVIEW_SEC = 1.1; // how long an editor chord audition rings (M6)
 
 export class Player {
   private synth: Synth;
@@ -184,6 +185,17 @@ export class Player {
   seekToMeasure(i: number): void {
     if (i < 0 || i >= this.measureSecs.length) return;
     this.seek(this.measureSecs[i]);
+  }
+
+  /**
+   * Sound a chord once as editor feedback (M6 audition), independent of
+   * transport state — used when a chord is added/updated or previewed in the
+   * popover. Overlaps harmlessly with playback if it happens to be running.
+   */
+  previewChord(pitches: number[]): void {
+    if (pitches.length === 0) return;
+    void this.synth.resume();
+    this.synth.playChord(pitches, this.synth.now, PREVIEW_SEC);
   }
 
   setMetronome(enabled: boolean): void {

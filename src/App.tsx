@@ -11,6 +11,9 @@ import { useScoreEditor } from './store/useScoreEditor';
 import { setKeySignature } from './commands/key';
 import { transpose } from './commands/transpose';
 import { setTempo } from './commands/tempo';
+import { removeChordAt, setChordAt } from './commands/chord';
+import { voicingFromSpec } from './audio/voicing';
+import type { ChordSpec } from './model/chordSymbol';
 import { Dropzone } from './ui/Dropzone';
 import { Topbar } from './ui/Topbar';
 import { Toolbar } from './ui/Toolbar';
@@ -111,6 +114,32 @@ function Score({ doc, fileName, defaults, onClose }: ScoreProps) {
 
   const transport = useTransport(doc, osmd, renderTick);
 
+  // Chord edits (M6). Each goes through the command layer (undoable, Invariant
+  // #3); adding/updating also auditions the new chord (B6.12) via the same
+  // voicing path playback uses. `previewChord` is a stable callback, so these
+  // handlers keep a stable identity (the memoized chord layer doesn't churn).
+  const { previewChord } = transport;
+  const auditionSpec = useCallback(
+    (spec: ChordSpec) => {
+      const voicing = voicingFromSpec(spec);
+      if (voicing) previewChord(voicing.pitches);
+    },
+    [previewChord],
+  );
+  const handleSetChord = useCallback(
+    (measureIndex: number, entryIndex: number, spec: ChordSpec) => {
+      dispatch(setChordAt(measureIndex, entryIndex, spec));
+      auditionSpec(spec);
+    },
+    [dispatch, auditionSpec],
+  );
+  const handleRemoveChord = useCallback(
+    (measureIndex: number, entryIndex: number) => {
+      dispatch(removeChordAt(measureIndex, entryIndex));
+    },
+    [dispatch],
+  );
+
   // Bar selection (M5) — ephemeral *view* state, not a Command (Invariant #3
   // governs DOM mutations; selection touches neither the DOM nor undo/redo).
   // Cleared when a new score loads, via the adjust-state-in-render pattern
@@ -179,6 +208,9 @@ function Score({ doc, fileName, defaults, onClose }: ScoreProps) {
         onSeekMeasure={transport.seekToMeasure}
         playingMeasure={transport.state.currentMeasure}
         isPlaying={transport.state.isPlaying}
+        onSetChord={handleSetChord}
+        onRemoveChord={handleRemoveChord}
+        onPreviewChord={auditionSpec}
       />
       <Transport controls={transport} />
     </div>

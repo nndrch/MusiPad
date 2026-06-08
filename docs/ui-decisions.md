@@ -15,10 +15,10 @@ Open UI/UX decisions for the remaining milestones (M5–M8) and the post‑MVP b
 
 Resolving these early de‑risks the rest, because the later items inherit from them.
 
-1. ⚑ **Chord rendering ownership** (M6) — OSMD already draws chord symbols; do we keep its text + an invisible click target, or render our own HTML pills? Gates the entire overlay/chord design. → see B/M6.
+1. ✅ **Chord rendering ownership** (M6) — **resolved**: render our **own HTML pills** (OSMD's drawn glyphs suppressed). → see B6.1.
 2. ✅ **Selection + playing‑bar visual language** (M5) — **resolved**: selection = grayscale, playing = orange (distinguished by hue). Reused by chords/sections/annotations later. → see A2, B5.1, B5.4.
-3. ⚑ **Popover spec** (M6) — the chord editor is the first real popover; sets the pattern for every future panel. → see A.
-4. ⚑ **Default chord‑symbol house style** (M6) — the `kind/@text` we write; affects every chart's readability. → see B/M6.
+3. ✅ **Popover spec** (M6) — **resolved** (M6a): screen-space body portal, anchored under the item, `--shadow-pop`, Esc / click-outside dismiss. → see A1.
+4. ✅ **Default chord‑symbol house style** (M6) — **resolved**: normalize to Berklee on edit (mi / Maj7 / ° / ø / + / sus / `C/E`). → see B6.8.
 5. ⚑ **Primary button + toast** (M7) — the app's first "loud" moments (Download). → see A.
 
 ---
@@ -27,11 +27,11 @@ Resolving these early de‑risks the rest, because the later items inherit from 
 
 Each is _first needed_ at the milestone noted — define it before that point.
 
-### A1. Popover / dropdown — _first needed: M6_ 🔲
+### A1. Popover / dropdown — _first needed: M6_ ✅
 
 Anchoring/positioning over the scaled SVG sheet, `--shadow-pop`, max size, dismiss (click‑outside / Esc), focus management.
 
-- **Decision:** _TBD_
+- **Decision:** Built with the M6a chord editor ([`overlay/ChordEditor.tsx`](../src/overlay/ChordEditor.tsx)). Rendered in a **body portal at `position: fixed`** (screen space) so the score's zoom-to-fit `transform: scale()` doesn't shrink the controls or smear the shadow; anchored **beneath** the clicked item via its `getBoundingClientRect()`, centered and clamped to the viewport. Surface: `--bg` + `1px solid --border-strong` + `--shadow-pop` (the one place shadows are allowed, §6.1). Dismiss on **Esc** or **pointerdown outside** (chord UI is tagged `data-chord-ui` so its own clicks don't self-dismiss); the field autofocuses (and selects existing text on edit). Reused by every future panel.
 
 ### A2. Selection visual language — _first needed: M5_ ✅
 
@@ -41,11 +41,11 @@ Two-level model (MuseScore-style), refined during the M5 build:
 - **Item level (M6/M7):** hovering an individual **item** (note, chord, or section/annotation) highlights **just that item in 100% accent**; selecting a bar also **highlights all items inside it**. Needs per-item projection that arrives with M6 (chords interactive) and M7 (sections/annotations exist) — see B6/B7. Notes get per-item targets when M6 builds the beat-anchor affordances.
 - **Decision:** As above. _(Supersedes both PRD §6.4's original accent-outline selection — §6.4 updated — and the initial M5 "grayscale fill only / faint gray hover" call, replaced after reviewing MuseScore's model.)_
 
-### A3. Context menu (right‑click) — _first needed: M6_ 🔲
+### A3. Context menu (right‑click) — _first needed: M6b_ 🔲
 
-Used for "Respell" (chord root M6, note M7) and possibly section/annotation remove. Trigger, look, item style, keyboard.
+Used for "Respell" (chord root M6b, note M7) and possibly section/annotation remove. Trigger, look, item style, keyboard.
 
-- **Decision:** _TBD_
+- **Decision:** _TBD — first built with respell in **M6b** (deferred from M6a, which shipped the pills + typed editor)._
 
 ### A4. Toast — _first needed: M7_ 🔲
 
@@ -96,39 +96,30 @@ Drag‑handle affordance, snap‑to‑barline indicator while dragging, drop fee
 
 ### M6 — Chords (dropdown)
 
-**Interaction model (from the human's reference mockups, 2026-06-07):** editing is **figure-level**, not bar-level. Two entry points:
+**Interaction model (mockups 2026-06-07, refined live 2026-06-08):** editing is **figure-level**, and **chord editing is kept separate from note editing** (the latter — slash toggle / note respell — is M7). Two hover-driven entry points:
 
-1. **Add** — select a **slash/figure** → a **＋ button** appears above it → opens the chord-editor popover (anchored under the staff) to add a chord at that beat. (Mockup: a selected slash with a small accent square above it; popover with a root display, a symbol text field showing e.g. `C7`, an **Add** button, a collapse chevron, and a close ×; a live preview of the symbol renders above the staff.)
-2. **Edit** — **click an existing chord** → the same popover opens **pre-filled**, with **Update** instead of Add. (Mockup: the clicked chord turns accent — e.g. `Em` in blue — and the popover shows `Em` with an **Update** button.)
+1. **Add** — **hover an empty slash** (no chord above it) → a **＋** appears above the note → click it to open the editor and **add** a chord at that beat. (No select-first step; the ＋ is purely hover-revealed, so the staff stays clean and note-selection isn't conflated with chord-add.)
+2. **Edit** — **hover an existing chord** → the pill **highlights** (accent); **click** it → the editor opens **pre-filled** with **Update** + **Remove**.
 
-These build on M5's invisible beat-anchor scaffold + bar selection, and on the item-level hover (B6.12).
+These build on M5's beat-anchor scaffold (now refined to real note graphics — B6.1).
 
-- ⚑ **B6.1 Chord rendering ownership** — keep OSMD's drawn symbols + invisible click target, **or** hide OSMD text and render our own HTML pills. Architectural; shapes everything below. The mockups recolor the existing symbol to accent on select, which leans toward "keep OSMD's text + a click/hover target over it" rather than fully re-rendering pills. 🔲
-  - **Decision:** _TBD_
-- **B6.2 Beat‑anchor affordance** — the "ghost target above the staff that brightens on hover" (PRD §6.3): shape (＋ / dot / pill outline), size, and **density** (per beat / per slash / per division). Per the mockup, the **＋ appears on a _selected_ slash** (not on every beat at rest), which keeps the staff clean. 🔲
-  - **Decision:** _TBD_
-- ⚑ **B6.3 Chord‑editor popover layout** — Root + Quality + optional Bass + live preview + Apply/Remove; columns vs stacked; compactness. The mockup shows a compact horizontal bar: **[root display] [symbol text field] [Add/Update] [collapse ▾] [close ×]**, anchored beneath the staff with a pointer, plus the live symbol drawn above the staff. (The text field accepts typed symbols like `C7`/`Em`; the collapse chevron likely reveals the fuller root/quality/bass picker — B6.4–B6.7.) 🔲
-  - **Decision:** _TBD_
-- **B6.4 Root picker pattern** — note‑button grid vs dropdown vs type‑ahead text (PRD mentions type‑ahead). 🔲
-  - **Decision:** _TBD_
-- **B6.5 Enharmonic toggle** — how C♯/D♭ is surfaced (sharp/flat switch? both shown?). 🔲
-  - **Decision:** _TBD_
-- ⚑ **B6.6 Quality list & grouping** — the `kind-value` enum is large (see [`musicxml-guidelines.md`](./musicxml-guidelines.md)); which qualities to expose, grouping (triads / 7ths / extended / sus / 6ths), ordering. 🔲
-  - **Decision:** _TBD_
-- **B6.7 Bass / slash picker** — always visible or revealed on toggle; reuses the root picker? 🔲
-  - **Decision:** _TBD_
-- ⚑ **B6.8 Default chord‑symbol house style** — the `kind/@text` we write (mi vs – vs m; Maj7 vs Δ; °, ø, +). Pick **one** default (user‑selectable styles are post‑MVP P2). 🔲
-  - **Decision:** _TBD_
-- **B6.9 Existing‑chord chips — click to edit** — **clicking a chord opens the editor pre‑filled** (Update), with the chord recolored to accent while active (mockup). Styling, how the hit-target sits over the beat. 🔲
-  - **Decision:** _TBD_
-- **B6.10 Keyboard map** — Enter = apply/Update, Esc = cancel/close, type‑ahead in the symbol field. 🔲
-  - **Decision:** _TBD_
-- **B6.11 Respell chord root** — right‑click → "Respell" (first context‑menu use, A3). 🔲
-  - **Decision:** _TBD_
-- **B6.12 Item-level hover/highlight + chord audition** _(carried over from the M5 hover/selection pass; needs per-item targets that land here)_ 🔲
-  - **Figure hover (edit mode) → 100% accent** on just that item (note/slash/chord) — the A2 item level; selecting a bar **highlights all items inside it**. This is the edit-mode hover deliberately left out of M5.
-  - **Chord audition (play):** an earlier idea was "click a chord to play it," but the mockups make **click = edit**. So chord playback moves _into_ the editor — e.g. a small **preview/play** control in the popover, or sounding the chord as feedback when Add/Update is applied — rather than a bare click. (The plumbing is trivial: `voicingFromHarmony` + `Synth.playChord`, the same path M2 uses.) Decide the exact audition gesture here.
-  - **Decision:** _TBD_
+**Delivery split (decided 2026-06-07):** M6 ships in **two PRs**. **M6a (built):** own HTML pills + accurate positioning, the **editable-combobox** editor (type or pick → Berklee normalize → audition), add / edit / remove, all undoable — satisfies the PRD §9 M6 AC. **M6b:** the **structured root/quality/bass picker** + **enharmonic toggle** and **right-click respell** (A3). Items below are tagged with which PR builds them.
+
+- ✅ **B6.1 Chord rendering ownership** _(M6a)_ — **Decision:** render our **own HTML pills** ([`overlay/ChordLayer.tsx`](../src/overlay/ChordLayer.tsx)), not OSMD's text, **styled to be indistinguishable from OSMD's engraving** (Times New Roman, normal weight, `ChordSymbolTextHeight`≈20px in score space, chart ink — the pill rides `.osmd-scale` so it scales with the score). OSMD's `RenderChordSymbols` stays **on** so it still _reserves_ the chord row and lays systems out exactly as in M5 (zero layout shift, rehearsal-mark spacing intact), but its glyphs are painted transparent via `EngravingRules.DefaultColorChordSymbol = '#00000000'` ([`render/useOsmd.ts`](../src/render/useOsmd.ts)). The pill sits in that reserved row (its top = the measure-box top, exactly where OSMD draws the chord — no upward lift, which had collided with the rehearsal mark), anchored over the slash each `<harmony>` attaches to by **graphical staff-entry x** (`overlay/projector.computeStaffEntries`) — accurate across bar 1's clef/key/time indent and OSMD's non-linear spacing.
+- ✅ **B6.2 Beat‑anchor affordance** _(M6a)_ — **Decision:** a per-empty-slash invisible **hover zone** over the note (`.chord-slot`, ~22px) that **reveals a ＋ on hover** (no persistent selection, no fill over the note — chord-add stays separate from note-edit). The ＋ sits in the chord row above the note; click → add. A slash that already has a chord shows no zone — it's edited via its pill (B6.9). Density = **per sounding note**, matching `commands/chord.ts` note addressing. _(Revised 2026-06-08 from the earlier select-then-＋ with an accent column, which conflated note selection with chord-add and hid the note.)_
+- ✅ **B6.3 Chord‑editor popover layout** _(M6a)_ — **Decision:** an **editable combobox** (the human's "editable dropdown"), a vertical stack anchored beneath the item: **header + ×**, one **wide editable field** + **▾** toggle, a **scrollable list** of the current root's qualities (the current chord **checked**), and an action row **[▷ Hear] [＋ Add / ✓ Update] [🗑 remove]**. Built as `.chord-editor` (A1). _(Revised 2026-06-08 from the compact horizontal bar with a separate live-preview chip — that duplicated the value and the field was too short; the combobox is one control.)_
+- ✅ **B6.4 Root/quality picker pattern** _(M6a combobox / M6b structured)_ — **Decision:** an **editable combobox** in M6a — **type** any symbol (parsed by [`model/chordSymbol.parseChordSymbol`](../src/model/chordSymbol.ts): `Em7`, `F#m7b5`, `BbMaj7`, `C/E`, `N.C.`, unicode ♯♭Δ°ø–) **or pick** from the dropdown of the current root's qualities (type filters the list; ↑/↓ + Enter, or click, commits + auditions). The fuller **structured note-button grid / bass picker** is **M6b**.
+- 🔲 **B6.5 Enharmonic toggle** _(M6b)_ — how C♯/D♭ is surfaced (sharp/flat switch). In M6a the typed field already accepts either spelling; the explicit toggle lands with the structured picker. **Decision:** _TBD (M6b)._
+- 🔲 **B6.6 Quality list & grouping** _(M6b)_ — grouping the `kind-value` enum (triads / 7ths / extended / sus / 6ths) for the picker. M6a's parser already covers the common set via [`model/chordSymbol`](../src/model/chordSymbol.ts). **Decision:** _TBD (M6b)._
+- 🔲 **B6.7 Bass / slash picker** _(M6b)_ — always visible or revealed on toggle. M6a accepts `/E` in the typed field. **Decision:** _TBD (M6b)._
+- ✅ **B6.8 Default chord‑symbol house style** _(M6a)_ — **Decision:** **normalize to the Berklee house style** on every display/edit (one fixed style; user-selectable styles stay post-MVP P2). Map (`KIND_QUALITY_LABEL` in [`model/chordSymbol`](../src/model/chordSymbol.ts)): minor=`mi`, major-seventh=`Maj7`, minor-seventh=`mi7`, half-diminished=`ø7`, diminished=`°`, diminished-seventh=`°7`, augmented=`+`, sus=`sus2`/`sus4`, sixths=`6`/`mi6`, slash=`C/E`, no-chord=`N.C.`; a plain major is the bare root. We **display** every chord through this formatter (consistent chart) and **write** the quality label to `kind/@text` on edit — but only on an explicit edit, so untouched chords keep their source `@text` on export (Invariant #2).
+- ✅ **B6.9 Existing‑chord chips — click to edit** _(M6a)_ — **Decision:** **hovering a pill highlights it** (recolors to **accent**); **clicking** opens the editor pre‑filled with **Update** + **Remove** (the pill stays accent while its editor is open). The pill is centered over its beat, in the chord row.
+- ✅ **B6.10 Keyboard map** _(M6a)_ — **Decision:** in the combobox: **↑/↓** move the highlight, **Enter** = apply (the highlighted option, else the typed value, when it parses), **Esc** = close. Add/Update is disabled while the field can't be parsed.
+- 🔲 **B6.11 Respell chord root** _(M6b)_ — right‑click → "Respell" (first context‑menu use, A3). **Decision:** _TBD (M6b)._
+- 🟡 **B6.12 Item-level hover/highlight + chord audition** _(carried over from the M5 hover/selection pass)_
+  - **Figure hover (edit mode) → accent** on just that item — **done for chords in M6a** (`.chord-pill` recolors to accent); **empty notes** reveal the ＋ on hover instead of a highlight (chord-add ≠ note-select). Note-level highlight and "selecting a bar highlights all items inside it" extend in M7 (sections/annotations + slash toggle).
+  - **Chord audition (play):** **resolved** — click = edit (not play), so audition lives **in the editor**: a **▷ Hear** button auditions the current chord, and **applying Add/Update / clicking a list option auto-auditions** the result. Same voicing path as playback (`voicingFromSpec` → `Player.previewChord` → `Synth.playChord`).
+  - **Decision:** As above (M6a); section/annotation item hover is B7.7 (M7).
 
 ### M7 — Slashes, Sections, Annotations, Download + Print
 
@@ -184,4 +175,6 @@ Record resolved decisions here (date — item — outcome), so the rationale sur
 - **2026-06-07 — M5 hover / deselect (B5.2, B5.3)** — Idle bars show no hover; deselect via Esc or a click on the empty desk.
 - **2026-06-07 — Auto-scroll (B5.6)** — Pulled into M5 from post-MVP P3; nudges the playing bar into view only when it leaves a comfortable band.
 - **2026-06-07 — Beat anchors (B5.7)** — Computed as invisible scaffolding in M5; nothing rendered on them until M6.
+- **2026-06-08 — M6a editor/affordance refinements after live review (B6.1/2/3/4/9/10/12, A1)** — From the human's screenshots: (1) **pills now match OSMD's engraving exactly** (Times New Roman / normal / ~20px / chart ink) instead of the app sans-serif; (2) **fixed the pill–rehearsal-mark overlap** — the pill drops the upward lift and sits in OSMD's reserved chord row (measure-box top); (3) **empty-slash hover reveals a ＋** directly (no select-first), with **no accent fill over the note** (it had hidden the slash), and **note-edit is kept separate from chord-edit**; (4) the editor became a **single editable combobox** (type or pick the root's qualities, current checked) — removing the duplicated preview chip and the too-short field. Hovering an existing chord highlights it; clicking edits. All re-verified headless (28/28).
+- **2026-06-07 — M6 split into M6a + M6b; M6a built (B6.1/2/3/4/8/9/10/12, A1)** — M6 ships in two PRs. **M6a (built):** **own HTML pills** (OSMD glyphs painted transparent via `DefaultColorChordSymbol`, `RenderChordSymbols` kept on to preserve layout/spacing), positioned by **graphical staff-entry x** (`projector.computeStaffEntries`); the **typed-field editor** (A1 popover — body portal, fixed, Esc/click-outside) with **parse → Berklee normalize → live preview**, **add** (select slash → ＋), **edit/remove** (click pill), all undoable (`commands/chord.ts`, measure-snapshot inverse); **in-editor audition** (▷ Hear + auto-audition on apply, via `voicingFromSpec`/`previewChord`). Satisfies the PRD §9 M6 AC. **M6b (next):** structured root/quality/bass picker + enharmonic toggle (the ▾, disabled in M6a) and right-click **respell** (A3). _Rationale:_ the locked decisions (own pills, Berklee house style, typed+structured editor, respell) were settled first; splitting keeps the first PR focused on the AC-satisfying core.
 - **2026-06-07 — Edit-mode bar hover disabled; editing is figure-level (B5.2, B6)** — Hovering a whole bar in edit mode is irrelevant, so the edit-mode bar hover is **commented off** in code (kept for easy revisit); the playing-mode hover stays. Real editing is **per-figure**: select a slash → **＋** add chord; click a chord → **edit** (Update). Captured from the human's mockups into B6 (model note, B6.2/B6.3/B6.9/B6.12). A briefly-considered **chord click-to-play was pulled into M5 then reversed** — since click = edit, chord audition belongs inside the M6 editor (B6.12). **M5 stays bar-level only.**

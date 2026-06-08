@@ -1,0 +1,156 @@
+/*
+ * Chord-editor popover (A1, M6a) — an editable combobox. The app's first real
+ * popover, so it sets the pattern (PRD §6.1: borders everywhere; shadow only
+ * here). A vertical stack: header + close, one wide editable field with a ▾
+ * toggle, a scrollable list of chord options (current one checked), and the
+ * action row (Hear / Add·Update / Remove). Body portal at `position: fixed` so
+ * the score's zoom transform doesn't scale it.
+ */
+.chord-editor {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  padding: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+  font-family: var(--font-ui);
+  color: var(--text);
+}
+
+.chord-editor__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.chord-editor__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.chord-editor__fieldrow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.chord-editor__field {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  transition:
+    border-color 90ms ease,
+    box-shadow 90ms ease;
+}
+.chord-editor__field::placeholder {
+  color: var(--text-faint);
+}
+.chord-editor__field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.chord-editor__field.is-invalid {
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+}
+
+/* Options list — scrollable, single column; current chord checked + accented. */
+.chord-editor__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 196px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.chord-editor__opt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 5px 10px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.chord-editor__opt.is-active {
+  background: var(--surface-hover);
+}
+.chord-editor__opt.is-current {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.chord-editor__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The single orange primary in this popover — Add / Update. */
+.chord-editor__apply {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 90ms ease;
+}
+.chord-editor__apply:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.chord-editor__apply:disabled {
+  background: var(--surface-hover);
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+
+/* Quiet icon buttons (close / chevron / hear / remove). */
+.chord-editor__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    color 90ms ease,
+    background-color 90ms ease;
+}
+.chord-editor__icon:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.chord-editor__icon:disabled {
+  color: var(--text-faint);
+  cursor: not-allowed;
+}

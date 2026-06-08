@@ -9,27 +9,28 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 ## Current state (2026-06-07)
 
 - **Shipped:** M0 (Scaffold), M1 (Load + Render), M2 (Playback), M3 (Command layer + Undo/Redo), M4 (Global edits), **M5 (Overlay projector + Selection + bar-highlight playhead)** are all merged to `main` (M4 [PR #6](https://github.com/nndrch/MusiPad/pull/6) `784cd81`; M5 [PR #7](https://github.com/nndrch/MusiPad/pull/7) `91207eb`).
-- **Latest:** **M5** — the HTML overlay layer (logical→pixel measure boxes from OSMD graphics, riding the zoom-to-fit transform), **click-to-select** bars (**grayscale** border + fill), a full-bar **orange** playing highlight that replaces M2's thin-line cursor, **auto-scroll** to keep the playing bar in view, and **click-a-bar-to-seek** while playing. UI decisions for M5 were settled first in [`ui-decisions.md`](./ui-decisions.md); chord add/edit + figure interactions are specced for M6.
+- **In flight:** **M6 — Chords**, split into two PRs. **M6a** (own HTML chord pills matching OSMD's engraving + the chord editor — an editable combobox — to add / edit / remove, undoable, with in-editor audition) is **built on `feat/m6a-chords`** — PR pending. **M6b** (structured root/quality/bass picker + enharmonic toggle + right-click respell) is next.
+- **Latest merged:** **M5** — the HTML overlay layer (logical→pixel measure boxes from OSMD graphics, riding the zoom-to-fit transform), **click-to-select** bars (**grayscale** border + fill), a full-bar **orange** playing highlight that replaces M2's thin-line cursor, **auto-scroll** to keep the playing bar in view, and **click-a-bar-to-seek** while playing.
 - **Live preview:** https://musipad.vercel.app (Vercel project `nndrchs-projects/musipad`; GitHub connected → pushes to `main` deploy production, branches/PRs get preview URLs).
-- **Planning:** a 3-milestone post-MVP re-weigh (CLAUDE.md rule 6) at M3 promoted three low-hanging items into milestones — **title subline → M4** (shipped), **bar-highlight playhead → M5**, **basic Print → M7**. During M5 scoping the human also pulled **auto-scroll → M5** (was post-MVP P3). A4 PDF generation stays post-MVP.
-- **Next milestone:** **M6 — Chords (dropdown)** — chord add/edit popover (select slash → ＋ add; click chord → edit), figure hover → accent, in-editor chord audition.
+- **Planning:** a 3-milestone post-MVP re-weigh (CLAUDE.md rule 6) at M3 promoted three low-hanging items into milestones — **title subline → M4** (shipped), **bar-highlight playhead → M5**, **basic Print → M7**. During M5 scoping the human also pulled **auto-scroll → M5** (was post-MVP P3). A4 PDF generation stays post-MVP. _(The next 3-milestone re-weigh is due when M6 fully ships, i.e. after M6b — CLAUDE.md rule 6.)_
+- **Next:** finish **M6b** (the structured picker + respell), then **M7 — Slashes, Sections, Annotations, Download + Print**.
 
 ---
 
 ## Milestone status
 
-| #   | Milestone                                                            | Status     | PR                                                      | Merge / commit        |
-| --- | -------------------------------------------------------------------- | ---------- | ------------------------------------------------------- | --------------------- |
-| M0  | Scaffold                                                             | ✅ Done    | — (direct to `main`)                                    | `2583d81`, `166d61a`  |
-| M1  | Load + Render (+ ScoreIO)                                            | ✅ Done    | [#1](https://github.com/nndrch/MusiPad/pull/1) (merged) | `99fbb78` ← `9dd4d14` |
-| —   | W3C-compliance + lead-sheet pass                                     | ✅ Done    | [#2](https://github.com/nndrch/MusiPad/pull/2) (merged) | see PR #2             |
-| M2  | Playback (chord-chart realization)                                   | ✅ Done    | [#4](https://github.com/nndrch/MusiPad/pull/4) (merged) | `315a792`             |
-| M3  | Command layer + Undo/Redo                                            | ✅ Done    | [#5](https://github.com/nndrch/MusiPad/pull/5) (merged) | `0df417b`             |
-| M4  | Global edits (Key, Transpose, Tempo) + title subline                 | ✅ Done    | [#6](https://github.com/nndrch/MusiPad/pull/6)          | `784cd81`             |
-| M5  | Overlay projector + Selection + bar-highlight playhead + auto-scroll | ✅ Done    | [#7](https://github.com/nndrch/MusiPad/pull/7)          | `91207eb`             |
-| M6  | Chords (dropdown)                                                    | ⏳ Planned | —                                                       | —                     |
-| M7  | Slashes, Sections, Annotations, Download + Print                     | ⏳ Planned | —                                                       | —                     |
-| M8  | Polish                                                               | ⏳ Planned | —                                                       | —                     |
+| #   | Milestone                                                            | Status       | PR                                                      | Merge / commit        |
+| --- | -------------------------------------------------------------------- | ------------ | ------------------------------------------------------- | --------------------- |
+| M0  | Scaffold                                                             | ✅ Done      | — (direct to `main`)                                    | `2583d81`, `166d61a`  |
+| M1  | Load + Render (+ ScoreIO)                                            | ✅ Done      | [#1](https://github.com/nndrch/MusiPad/pull/1) (merged) | `99fbb78` ← `9dd4d14` |
+| —   | W3C-compliance + lead-sheet pass                                     | ✅ Done      | [#2](https://github.com/nndrch/MusiPad/pull/2) (merged) | see PR #2             |
+| M2  | Playback (chord-chart realization)                                   | ✅ Done      | [#4](https://github.com/nndrch/MusiPad/pull/4) (merged) | `315a792`             |
+| M3  | Command layer + Undo/Redo                                            | ✅ Done      | [#5](https://github.com/nndrch/MusiPad/pull/5) (merged) | `0df417b`             |
+| M4  | Global edits (Key, Transpose, Tempo) + title subline                 | ✅ Done      | [#6](https://github.com/nndrch/MusiPad/pull/6)          | `784cd81`             |
+| M5  | Overlay projector + Selection + bar-highlight playhead + auto-scroll | ✅ Done      | [#7](https://github.com/nndrch/MusiPad/pull/7)          | `91207eb`             |
+| M6  | Chords (dropdown) — M6a pills + typed editor / M6b picker + respell  | 🟡 In flight | M6a: `feat/m6a-chords` (PR pending)                     | —                     |
+| M7  | Slashes, Sections, Annotations, Download + Print                     | ⏳ Planned   | —                                                       | —                     |
+| M8  | Polish                                                               | ⏳ Planned   | —                                                       | —                     |
 
 Legend: ✅ done · 🟡 in flight · ⏳ not started.
 
@@ -91,9 +92,26 @@ Retroactive correctness/quality work on the M0/M1 base, plus PRD reframes. Merge
 - **Key decisions:** the M2 OSMD cursor is fully disabled — removing `cursorsOptions` still left OSMD's _default_ cursor (a stray green box), so the `CursorController` adapter is now a no-op; the full-bar highlight is the sole playhead (B5.5). Overlay coords are computed once per render in unscaled space; resize is handled by the shared CSS transform (no per-resize recompute), still Invariant-#4 compliant.
 - Verified: `eslint`/`tsc`/`vite build`; headless-Chromium live pass (10/10) — box alignment within the SVG, one box per measure, single-select, Esc + desk-click deselect, **overlay re-projects after a transpose edit**, playing highlight advances (m0→m1→…), no visible OSMD cursor, auto-scroll on a constrained viewport.
 
-### M6–M8 ⏳ Planned
+### M6 — Chords 🟡 (M6a built; M6b next)
 
-- **M6** Chord dropdown (root/quality/bass + enharmonic) writing `harmony` with conventional `kind/@text`. Renders chord targets on the M5 beat-anchor scaffold.
+M6 ships in **two PRs** (decided 2026-06-07, see [`ui-decisions.md`](./ui-decisions.md) B6). UI decisions were all locked first.
+
+**M6a — own pills + typed editor (built on `feat/m6a-chords`, PR pending):**
+
+- Delivered:
+  - `model/chordSymbol` — pure chord core: `parseChordSymbol` (typed text → spec, accepts `Em7`/`F#m7b5`/`BbMaj7`/`C/E`/`N.C.`/unicode ♯♭Δ°ø–), `formatChordSymbol` + `qualityLabel` (Berklee house style), `readChordSpec`/`readChartChords` (DOM → specs located by `{measureIndex, entryIndex}`).
+  - `commands/chord` — `setChordAt` / `removeChordAt`, **measure-scoped** so the existing `editElement` subtree-snapshot inverse covers insert / rewrite / remove uniformly (undoable, Invariant #2/#3). Writes `<harmony>` in schema child order (`root → kind → bass`), preserving `inversion`/`degree`/`frame`/`offset`/`@type`.
+  - `overlay/projector.computeStaffEntries` — accurate per-note anchors from OSMD's graphical staff entries (replaces M5's linear beat-anchor scaffold, as B5.7 anticipated); `useMeasureBoxes` now returns `entries`.
+  - `overlay/ChordLayer` (own HTML pills; empty-slash hover zones that reveal a ＋) + `overlay/ChordEditor` (the A1 popover — an **editable combobox**: wide field + dropdown of the root's qualities with the current one checked, ▷ Hear, Add/Update, Remove) + CSS.
+  - Audition: `audio/voicing.voicingFromSpec` + `Player.previewChord` (exposed via `useTransport`); applying a chord (or picking a list option) auto-auditions.
+- **Key decisions:** **own HTML pills** (B6.1), **styled to match OSMD's engraving exactly** (Times New Roman / normal / ~20px / chart ink) and sitting in OSMD's reserved chord row — OSMD's glyphs painted transparent (`DefaultColorChordSymbol = '#00000000'`) with `RenderChordSymbols` kept **on** so **layout/rehearsal-mark spacing don't shift** vs M5; pills anchored by **graphical staff-entry x** so they sit exactly over the slash. Editing is **figure-level and kept separate from note-editing**: **hover an empty slash → ＋ → add**; **hover a chord → highlight, click → edit/remove**. Display normalizes to **Berklee** (B6.8) but only an explicit edit rewrites `kind/@text` (untouched chords export verbatim).
+- **AC (PRD §9 M6):** ✅ add a per-beat chord; ✅ edit & remove; ✅ all undoable; persists in the DOM for download (M7).
+- Verified: `eslint`/`tsc`/`vite build`; headless-Chromium live pass (28/28) — pills render Berklee-normalized & matching OSMD's font/row, glyphs suppressed, pill clears the rehearsal mark, empty-slash hover reveals ＋, chord hover highlights, combobox add (type) + pick-from-list, edit pre-fills, remove, undo/redo, hover zones hidden while playing, no page errors.
+
+**M6b — structured picker + respell (next PR):** the root/quality/bass button picker + enharmonic toggle behind the editor's ▾ (disabled in M6a), and right-click **respell** on a chord root (first context-menu use, A3).
+
+### M7–M8 ⏳ Planned
+
 - **M7** Slashes (per-note notehead), draggable sections/annotations, Download (serialize → `.musicxml`, prolog preserved). **+ Print** (`@media print`, score only).
 - **M8** Polish: toasts, empty/error states, keyboard shortcuts, design audit.
 

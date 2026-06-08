@@ -1,10 +1,10 @@
 import { useLayoutEffect, useState, type RefObject } from 'react';
 import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import {
-  computeBeatAnchors,
   computeMeasureBoxes,
-  type BeatAnchor,
+  computeStaffEntries,
   type MeasureBox,
+  type StaffEntryAnchor,
 } from './projector';
 
 /** The rendered `<svg>`'s offset box within `.osmd-scale` (unscaled px). */
@@ -17,7 +17,8 @@ export interface OverlayFrame {
 
 export interface OverlayProjection {
   boxes: MeasureBox[];
-  anchors: BeatAnchor[];
+  /** One anchor per note onset — chord pills / ＋ / slash targets ride these (M6). */
+  entries: StaffEntryAnchor[];
   /** Where to position the overlay so box coords (svg-relative) map directly. */
   frame: OverlayFrame | null;
 }
@@ -39,7 +40,7 @@ export function useMeasureBoxes(
 ): OverlayProjection {
   const [result, setResult] = useState<OverlayProjection>({
     boxes: [],
-    anchors: [],
+    entries: [],
     frame: null,
   });
 
@@ -47,11 +48,12 @@ export function useMeasureBoxes(
     const osmd = osmdRef.current;
     const host = hostRef.current;
     if (!osmd || !host) {
-      setResult({ boxes: [], anchors: [], frame: null });
+      setResult({ boxes: [], entries: [], frame: null });
       return;
     }
     const svg = host.querySelector('svg') as SVGElement | null;
     const boxes = computeMeasureBoxes(osmd, svg);
+    const entries = computeStaffEntries(osmd, svg);
     // OSMD's coordinate (0,0) is the top-left of the svg, which sits at the
     // host's *content-box* origin (inside its padding). We derive the overlay
     // frame from the host — a real HTMLElement with valid offset/client metrics
@@ -69,7 +71,7 @@ export function useMeasureBoxes(
       width: host.clientWidth - padL - padR,
       height: host.clientHeight - padT - padB,
     };
-    setResult({ boxes, anchors: computeBeatAnchors(osmd, boxes), frame });
+    setResult({ boxes, entries, frame });
     // renderSignal is the trigger; refs are stable and intentionally omitted.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [renderSignal]);
