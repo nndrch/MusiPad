@@ -24,7 +24,15 @@ interface ActiveVoice {
 export class Synth {
   private ctx: AudioContext;
   private master: GainNode;
+  /** Transport voices (playback/metronome) — silenced by `allOff` on pause/seek/stop. */
   private active = new Set<ActiveVoice>();
+  /**
+   * Editor-audition voices (M6 `previewChord`) — tracked separately so a
+   * transport `allOff()` (pause/seek/stop, or a schedule rebuild after a chord
+   * edit) never truncates them. Without this an audition was struck then
+   * silenced ~100 ms later by the edit's re-render → "percussive pulse".
+   */
+  private previews = new Set<ActiveVoice>();
 
   constructor() {
     const Ctor: typeof AudioContext =
@@ -58,10 +66,34 @@ export class Synth {
 
   /**
    * Schedule a block chord at `atTime` (AudioContext seconds), sustained for
-   * `durationSec`. Each MIDI pitch gets a triangle oscillator through a shared
-   * attack–decay–sustain–release envelope, gain-compensated for voice count.
+   * `durationSec` — the transport's playback/seek voices (silenced by `allOff`).
    */
   playChord(pitches: number[], atTime: number, durationSec: number): void {
+    this.scheduleChord(pitches, atTime, durationSec, this.active);
+  }
+
+  /**
+   * Sound a chord *now* as editor feedback (M6 audition), **independent of the
+   * transport**: it rings its full `durationSec` even if a pause/seek/stop or a
+   * post-edit schedule rebuild calls `allOff()` in the meantime. Only the latest
+   * audition rings — a new one fades any still-ringing preview first.
+   */
+  previewChord(pitches: number[], durationSec: number): void {
+    this.stopPreviews();
+    this.scheduleChord(pitches, this.now, durationSec, this.previews);
+  }
+
+  /**
+   * Build one block-chord voice into `registry`. Each MIDI pitch gets a triangle
+   * oscillator through a shared attack–decay–sustain–release envelope,
+   * gain-compensated for voice count.
+   */
+  private scheduleChord(
+    pitches: number[],
+    atTime: number,
+    durationSec: number,
+    registry: Set<ActiveVoice>,
+  ): void {
     if (pitches.length === 0 || durationSec <= 0) return;
     // Under a delayed tick a region can land just behind the clock; clamp so it
     // sounds immediately rather than being scheduled in the past (Web Audio
@@ -102,10 +134,10 @@ export class Synth {
     }
 
     const voice: ActiveVoice = { sources, gain };
-    this.active.add(voice);
+    registry.add(voice);
     sources[0].onended = () => {
       gain.disconnect();
-      this.active.delete(voice);
+      registry.delete(voice);
     };
   }
 
@@ -141,12 +173,24 @@ export class Synth {
   }
 
   /**
-   * Silence everything immediately (with a tiny fade to avoid a click) and
-   * cancel any scheduled-but-not-started notes. Used on pause/seek/stop.
+   * Silence the **transport** voices immediately (tiny fade to avoid a click)
+   * and cancel any scheduled-but-not-started notes. Used on pause/seek/stop and
+   * on schedule reloads. Editor auditions (`previews`) are intentionally left to
+   * ring out — they're independent of the transport.
    */
   allOff(): void {
+    this.fadeOut(this.active);
+  }
+
+  /** Fade out any still-ringing editor audition (a new audition supersedes it). */
+  private stopPreviews(): void {
+    this.fadeOut(this.previews);
+  }
+
+  /** Quick fade + stop for every voice in a registry. */
+  private fadeOut(registry: Set<ActiveVoice>): void {
     const t = this.now;
-    for (const voice of this.active) {
+    for (const voice of registry) {
       try {
         voice.gain.gain.cancelScheduledValues(t);
         voice.gain.gain.setTargetAtTime(0.0001, t, 0.01);
@@ -160,6 +204,7 @@ export class Synth {
   /** Tear down the AudioContext. */
   dispose(): void {
     this.allOff();
+    this.stopPreviews();
     void this.ctx.close();
   }
 }

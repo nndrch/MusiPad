@@ -165,12 +165,18 @@ export function ChordEditor({
   }
 
   return createPortal(
+    // Stop clicks here from bubbling: though we portal to <body>, React events
+    // still propagate up the *component* tree to the score's `.osmd-scroll`
+    // desk-click handler — which would deselect the bar and seek the playhead to
+    // 0 (and, pre-fix, `allOff()` the audition) just for interacting with the
+    // editor.
     <div
       className="chord-editor"
       data-chord-ui
       role="dialog"
       aria-label={mode === 'add' ? 'Add chord' : 'Edit chord'}
       style={{ left: pos.left, top: pos.top, width: POPOVER_WIDTH }}
+      onClick={(e) => e.stopPropagation()}
     >
       <div className="chord-editor__head">
         <span className="chord-editor__title">

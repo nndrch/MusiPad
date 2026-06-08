@@ -195,7 +195,9 @@ export class Player {
   previewChord(pitches: number[]): void {
     if (pitches.length === 0) return;
     void this.synth.resume();
-    this.synth.playChord(pitches, this.synth.now, PREVIEW_SEC);
+    // Routed through the synth's preview path so it rings its full span even if
+    // the chord edit's re-render (or a seek/deselect) triggers `allOff()`.
+    this.synth.previewChord(pitches, PREVIEW_SEC);
   }
 
   setMetronome(enabled: boolean): void {
