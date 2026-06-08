@@ -306,13 +306,13 @@ Ships in **two PRs** (see `docs/ui-decisions.md` B6).
 - **M6b (dropped):** a structured **root/quality/bass picker** + **enharmonic toggle** + **respell** was prototyped but **cut as too complex for the MVP** (2026-06-08) — the shipped editor is the dropdown above. The ideas are parked in [`post-mvp-improvements.md`](./post-mvp-improvements.md) **P8**; note respell still lands in M7. Typing already covers every spelling/quality/slash chord.
 - **AC:** Add a per-beat chord; it persists in download; edit & remove work; all undoable. ✅ **Met (M6, [PR #9](https://github.com/nndrch/MusiPad/pull/9)).**
 
-### M7 — Slashes, Sections, Annotations, Download
+### M7 — Sections, Annotations, Download
 
-- Per-bar slash toggle (or fallback). Draggable section marks (rehearsal) + draggable annotations (words), snap-to-bar.
-- Note respell (right-click note).
+- Draggable section marks (rehearsal) + draggable annotations (words), snap-to-bar.
 - `LocalFileIO.save` → serialize DOM → download `.musicxml`.
 - **Print** (promoted from post-MVP P4): a Print button beside Download that prints the score via `@media print` CSS — score only (topbar/transport/cursor/overlays hidden). Full client-side **A4 PDF generation** stays in P4.
-- **AC:** Drag a section to another bar; add an annotation; toggle slashes; download → reopening the file shows all edits; unedited measures identical to the load baseline; declaration/DOCTYPE intact. Print produces a clean score-only page.
+- **Extracted to post-MVP (2026-06-08):** both are **note-level** features whose value needs note editing (P9/P10), and our chart notes are un-played slash placeholders — **per-bar slash toggle → P11** (built, on `post-mvp/slash-toggle`); **note respell + the A3 right-click context menu → P12**.
+- **AC:** Drag a section to another bar; add an annotation; download → reopening the file shows all edits; unedited measures identical to the load baseline; declaration/DOCTYPE intact. Print produces a clean score-only page.
 
 ### M8 — Meter / time-signature editing
 

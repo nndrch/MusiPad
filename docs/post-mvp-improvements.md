@@ -199,3 +199,23 @@ The MVP's structural seams (Invariant #5) were built for exactly this kind of ex
 **Related:** **P9** (note playback — the first step), **P8** (enharmonic respell / `enharmonicAlternatives`, reused for pitch respell), **P7** (meter editing — shares the beat-math/`divisions` model the reflow engine needs), **P3** (instruments / play-along mute for a melody+chords mix), **P2** (lead-sheet conventions & road map).
 
 **Why deferred:** A deliberate expansion of the product's mission well beyond the PoC/MVP (M0–M9), which proves the chord-chart *correction* loop. Recorded here as the intended evolution path so the architecture decisions made for the MVP (DOM-as-truth, command layer, per-item overlay projection) are understood as the foundation this builds on — and so the hard part (rhythm reflow) is flagged before anyone assumes "it's just chord editing for notes."
+
+---
+
+## P11 — Per-bar slash toggle (built, extracted from M7)
+
+A toolbar toggle that flips the **selected bar** between slash notation (`////`, the rhythm-section comp convention) and showing its noteheads. **Fully built and verified-by-build during M7, then extracted from the MVP** (2026-06-08) — preserved on branch **`post-mvp/slash-toggle`** ([commit `3ef169a`](https://github.com/nndrch/MusiPad/commit/3ef169a)). _(Requested/extracted 2026-06-08.)_
+
+**What exists (on the branch):**
+
+- `commands/slashes.ts` — `setBarSlashes(measureIndex, on)` (measure-scoped, snapshot-inverse undo) toggling per-note `<notehead>slash</notehead>` (spike **S1**: OSMD ignores `measure-style/slash`; per-note notehead only), inserted in schema-valid position; durations/pitch/type untouched. Plus `barSlashState()` for the toggle's enabled/active reflection.
+- `ui/Toolbar` — a "Slashes" toggle acting on the selected bar (disabled with no selection, active=accent-tint).
+- `App/Score` — selected-bar slash state + toggle wiring (re-reads on each edit via `revision`).
+
+**Why deferred:** Slashes already come from the Basic Pitch pipeline, so the toggle is only a cleanup tool today; its real value — choosing per bar between *comp (slashes)* and a *written figure (notes)* — needs **note editing** ([[P10]] / P9). Cheap to revive: rebase the branch onto `main`.
+
+## P12 — Note respell + A3 right-click context menu
+
+Right-click a note → a context menu offering its enharmonic alternative spelling (F♯ ↔ G♭) at the same sounding pitch, via `transpose.ts`'s spelling tables (rewrite `<step>`+`<alter>`, octave preserved, natural's `<alter>` removed; minimal `<accidental>` writer when a real pitched note carries one). Builds the **A3** body-portal context-menu primitive (pointer-anchored, keyboard-nav, `data-*` dismiss like `ChordEditor`). **Scoped during M7, then deferred** (2026-06-08). _(Designed, not built.)_
+
+**Why deferred:** Respell is **moot on the chart's placeholder slash notes** (no meaningful pitch to respell); it only pays off once real note pitches are editable ([[P10]]). The A3 context menu was first-needed here, so it defers with respell — section/annotation remove (M7) uses ⌫/× instead. Shares the enharmonic-spelling idea with **P8** (chord respell). The first real home for both is the note-editing epic ([[P10]]).

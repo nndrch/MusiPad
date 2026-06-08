@@ -13,7 +13,7 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 - **Latest merged:** **M6** ([PR #9](https://github.com/nndrch/MusiPad/pull/9)) — own HTML chord pills matching OSMD's engraving + the **dropdown** chord editor (add via hover-＋, edit/remove via the pill, undoable, with in-editor audition).
 - **Live preview:** https://musipad.vercel.app (Vercel project `nndrchs-projects/musipad`; GitHub connected → pushes to `main` deploy production, branches/PRs get preview URLs).
 - **Planning:** a 3-milestone post-MVP re-weigh (CLAUDE.md rule 6) at M3 promoted three low-hanging items into milestones — **title subline → M4** (shipped), **bar-highlight playhead → M5**, **basic Print → M7**. During M5 scoping the human also pulled **auto-scroll → M5** (was post-MVP P3). A4 PDF generation stays post-MVP. The **M6 re-weigh (2026-06-08)** then promoted **meter / time-signature editing (P7) → new M8** — its own focused milestone after M7, so M7 stays tight — and renumbered **Polish → M9**; everything else stays deferred (P9 note-audition and P10 lead-sheet-editor are product-direction/epic work, not MVP milestones).
-- **Next:** **M7 — Slashes, Sections, Annotations, Download + Print**, then **M8 — Meter / time-signature editing** (promoted from P7), then **M9 — Polish**.
+- **In flight:** **M7 — Sections, Annotations, Download + Print**. Download + Print shipped on the branch; Sections + Annotations next. The two **note-level** M7 items were **extracted to post-MVP** (2026-06-08): per-bar slash toggle → **P11** (built, on `post-mvp/slash-toggle`), note respell + A3 menu → **P12** — both need note editing (P9/P10) to be worth it, and our chart notes are slash placeholders. Then **M8 — Meter / time-signature editing**, then **M9 — Polish**.
 - **Captured requests:** none outstanding — the **meter / time-signature editing** request (2026-06-08) was **promoted to M8** in the M6 re-weigh (see Planning); full scope lives in the M8 milestone (PRD §9) and **P7** is now a promoted stub.
 
 ---
@@ -30,7 +30,7 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 | M4  | Global edits (Key, Transpose, Tempo) + title subline                    | ✅ Done    | [#6](https://github.com/nndrch/MusiPad/pull/6)          | `784cd81`             |
 | M5  | Overlay projector + Selection + bar-highlight playhead + auto-scroll    | ✅ Done    | [#7](https://github.com/nndrch/MusiPad/pull/7)          | `91207eb`             |
 | M6  | Chords (dropdown) — own pills + dropdown chord editor (add/edit/remove) | ✅ Done    | [#9](https://github.com/nndrch/MusiPad/pull/9)          | `ca9160d`             |
-| M7  | Slashes, Sections, Annotations, Download + Print                        | ⏳ Planned | —                                                       | —                     |
+| M7  | Sections, Annotations, Download + Print                                 | 🟡 In flight | —                                                     | —                     |
 | M8  | Meter / time-signature editing (promoted from P7)                       | ⏳ Planned | —                                                       | —                     |
 | M9  | Polish                                                                  | ⏳ Planned | —                                                       | —                     |
 
@@ -114,7 +114,7 @@ M6 was planned as **two PRs** (2026-06-07, see [`ui-decisions.md`](./ui-decision
 
 ### M7–M9 ⏳ Planned
 
-- **M7** Slashes (per-note notehead), draggable sections/annotations, Download (serialize → `.musicxml`, prolog preserved). **+ Print** (`@media print`, score only).
+- **M7** Draggable sections/annotations + Download (serialize → `.musicxml`, prolog preserved) **+ Print** (`@media print`, score only). Download + Print built; Sections + Annotations next. _(Slash toggle → post-MVP **P11** (built, on `post-mvp/slash-toggle`); note respell + A3 menu → **P12**; both extracted 2026-06-08.)_
 - **M8** Meter / time-signature editing — promoted from post-MVP **P7** in the M6 re-weigh (2026-06-08): hover-edit the staff time signature → undoable `Command` patching `attributes/time`, re-deriving the beat math (`schedule.ts` metronome/measure lengths) + slash grid. Its own milestone after M7 (kept out of M7 to avoid bloating it).
 - **M9** Polish: toasts, empty/error states, keyboard shortcuts, design audit.
 
