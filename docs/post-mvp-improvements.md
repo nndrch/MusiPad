@@ -123,4 +123,15 @@ Today the chart's **meter (e.g. `4/4`) can't be edited.** M4 added the global ed
 - **Not just a label:** meter feeds the beat math — the metronome click grid and measure lengths in [`schedule.ts`](../src/audio/schedule.ts) and the slash-rhythm grid — so an edit must re-derive playback + re-project the overlay. Mid-piece meter changes (multiple `<time>`) are a further wrinkle; PoC scope could limit to the first/active meter like Key does.
 - Positioning the time-signature affordance reuses the M6 staff-entry/measure-box projection.
 
-**Why deferred:** New editing capability beyond the MVP milestone scope (M0–M8). It's a natural extension of the M6/M7 figure-level overlay editing; weigh it in the next 3-milestone post-MVP re-weigh (due after M6b) for promotion into M7 or a follow-up milestone. Logged in [`roadmap.md`](./roadmap.md) under _Captured requests_.
+**Why deferred:** New editing capability beyond the MVP milestone scope (M0–M8). It's a natural extension of the M6/M7 figure-level overlay editing; weigh it in the now-due 3-milestone post-MVP re-weigh for promotion into M7 or a follow-up milestone. Logged in [`roadmap.md`](./roadmap.md) under _Captured requests_.
+
+## P8 — Structured chord builder (picker + enharmonic respell)
+
+The shipped M6 chord editor is an **editable combobox** — a text field plus a **dropdown** of the current root's qualities ([`overlay/ChordEditor.tsx`](../src/overlay/ChordEditor.tsx)). It already covers every chord the MVP can express: typing parses `Em7` / `F#m7b5` / `BbMaj7` / `C/E` / `N.C.` / unicode ♯♭Δ°ø–, and the dropdown picks common qualities. _(This was the planned "M6b"; see [`ui-decisions.md`](./ui-decisions.md) decision log, 2026-06-08.)_
+
+**Scope / ideas (if ever wanted):**
+
+- A **structured builder** behind the editor's ▾: a **Root** selector (letter A–G + ♭/♮/♯ accidental), **Quality** buttons grouped by family over the full `kind-value` enum (triads / sixths / sevenths / sus / extended / N.C. — B6.6), and a **collapsible `/ bass`** slash picker (B6.7). Picker clicks compose the working symbol (via the field as the single source of truth) and audition it; Add/Update commits.
+- **Enharmonic respell** (B6.5/B6.11): for an accidental root, a one-click `Respell → <twin>` (C♯↔D♭) that flips spelling while keeping quality/bass — backed by a pure `enharmonicAlternatives(step, alter)` helper (reusable for **note respell in M7**, which is where the A3 right-click context menu will first be built).
+
+**Why deferred:** A full working prototype was built and verified (24/24 headless) on `feat/m6b-chord-picker`, then **cut on review as too complex for an MVP** — _"keep it simple as a dropdown with a list of chords"_ (2026-06-08). The dropdown stays the editor. This is recorded so the design (and the `enharmonicAlternatives` approach) isn't lost if a future, non-MVP iteration wants a richer builder.

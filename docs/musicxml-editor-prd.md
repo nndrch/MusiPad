@@ -303,8 +303,8 @@ Each milestone is independently runnable and demoable.
 Ships in **two PRs** (see `docs/ui-decisions.md` B6).
 
 - **M6a (built):** render existing chords as our **own clickable HTML pills** styled to match OSMD's engraving (OSMD glyphs suppressed; pills anchored over the slash by graphical staff-entry x, in OSMD's reserved chord row). An **editable-combobox** chord editor popover — type or pick the root's qualities → Berklee-house-style normalize — for **add** (hover an empty slash → ＋), **edit/remove** (click a pill), all → `harmony`, all undoable; in-editor **audition** (▷ Hear + auto-audition on apply). Chord editing is kept separate from note editing. Add/edit/remove are measure-scoped commands (snapshot inverse).
-- **M6b (next):** the structured **root/quality/bass picker** + **enharmonic toggle** behind the editor's ▾, and **right-click respell** on a chord root.
-- **AC:** Add a per-beat chord; it persists in download; edit & remove work; all undoable. ✅ **Met by M6a.**
+- **M6b (dropped):** a structured **root/quality/bass picker** + **enharmonic toggle** + **respell** was prototyped but **cut as too complex for the MVP** (2026-06-08) — the shipped editor is the dropdown above. The ideas are parked in [`post-mvp-improvements.md`](./post-mvp-improvements.md) **P8**; note respell still lands in M7. Typing already covers every spelling/quality/slash chord.
+- **AC:** Add a per-beat chord; it persists in download; edit & remove work; all undoable. ✅ **Met (M6, [PR #9](https://github.com/nndrch/MusiPad/pull/9)).**
 
 ### M7 — Slashes, Sections, Annotations, Download
 
