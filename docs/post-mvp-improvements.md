@@ -148,3 +148,50 @@ Today only **chords** sound — the harmonic rhythm realized as block voicings (
 - **Transport plays the melody line** _(larger)_ — sound the written note line alongside the chord regions during playback. This **reverses the documented chord-chart reading** (slashes keep time but don't articulate; placeholder pitches are never played), so it needs a **PRD decision** before any code, plus schedule/playback changes to emit and sound per-note pitch events.
 
 **Why deferred:** Beyond the MVP milestone scope (M0–M8) and the chord-chart premise the engine is built on. Captured so the (surprisingly small) audition path and the bigger melody-playback question aren't lost. Surfaced when the chord-preview-cutoff fix was being closed out.
+
+---
+
+## P10 — Evolve into a full lead-sheet editor (melody/note editing)
+
+> **This is an epic / north-star, not a single deferred refinement.** It changes the product's identity — from a **chord-chart corrector** (fix the chords over a fixed slash grid; PRD §3, §8) into a **lead-sheet authoring tool** where the user also writes and edits the **melody** itself. It therefore needs a **product-level decision and its own PRD track** (a milestone series beyond M0–M8), not just a slot in an existing milestone. P9 (note playback) is the first, smallest step on this path; this entry is the whole arc. _(Requested 2026-06-08.)_
+
+A lead sheet is **melody (pitched notes + rhythm) + chord symbols (+ optionally lyrics)**. MusiPad already owns the chord-symbol half (M6) and renders/round-trips real notation; what's missing is **editing the notes**: their pitch, their rhythm, and adding/removing them.
+
+### Why this is more tractable than it sounds — the seams already pay off
+
+The MVP's structural seams (Invariant #5) were built for exactly this kind of extension:
+
+- **DOM is the single source of truth (Invariant #1)** and OSMD is a re-rendered view. A note edit is just a DOM patch followed by a re-render — no new rendering engine, no second model.
+- **Every edit is a Command (Invariant #3).** Note edits become new `Command`s in [`src/commands/`](../src/commands/) alongside `chord` / `key` / `tempo` / `transpose` → **undo/redo and history come for free.**
+- **Note addressing already exists.** [`nthSoundingNote(measure, noteIndex)`](../src/commands/chord.ts) (used by chord edits) is the same addressing a note edit needs to locate its `<note>`.
+- **The overlay already finds noteheads.** [`computeStaffEntries`](../src/overlay/projector.ts) projects one anchor per note onset and [`ChordLayer`](../src/overlay/ChordLayer.tsx) already mounts clickable hit-zones over them — the substrate for note selection and an editor popover.
+- **pitch ↔ MIDI already exists.** [`voicing.ts`](../src/audio/voicing.ts) converts `step`/`octave`/`alter` ↔ MIDI (built for harmonies) — reusable for reading, writing, and auditioning note pitches.
+- **The schedule already walks every `<note>`.** [`schedule.ts`](../src/audio/schedule.ts) reads note *durations* today; extending it to read `<pitch>` is what lets the melody **sound** (the P9 transport question).
+
+### Scope — capabilities, roughly easiest → hardest
+
+1. **Note audition + melody playback** — see **P9**. Read note pitches; sound them on click and/or through the transport. Validates the pitch model end-to-end; lowest risk. _Prerequisite for everything below feeling real._
+2. **Pitch editing (in place, no rhythm change)** — change a selected note's pitch: drag up/down a staff step or arrow-key it, with accidental control (♯/♭/♮) and **enharmonic respell** (reuses the `enharmonicAlternatives` helper already slated for M7 / parked in **P8**). Writes `<pitch><step><octave><alter>` via a `Command`. **Local and reversible** — the measure's beat budget is untouched, so this respects Invariant #2 cleanly. Vertical hit-testing (a y on the staff → a diatonic step, given the clef + key) is the main new piece.
+3. **Rhythm / duration editing + note entry — _the hard part._** Change a note's duration (`<duration>` ticks + `<type>` + dots), add a note (split a slash/rest into pitched notes), delete a note (→ rest). Unlike chord and pitch edits, **a duration change is non-local**: it shifts every following onset in the bar, and must keep the measure **beat-valid** against its `divisions` + time signature. This needs:
+   - a **beat-budget / measure-rebalancing model** (durations must sum to the bar; over/under-full needs a policy — auto-rest fill, push/pull following notes, or reject the edit),
+   - **beam and tie recomputation** (`<beam>`, `<tie>`/`<tied>`),
+   - a **note-entry interaction** (mouse-on-staff = pitch + insertion point; or keyboard step-time; MIDI input is a later luxury), in the §6.1 "notepad calm" idiom.
+   This is what separates a real lead-sheet *editor* from the current figure-level chord editor, and where most of the risk and design effort lives.
+4. **Slash ↔ pitched conversion + rests** — a lead sheet routinely mixes a **notated melody** (head/verses) with **slash bars** (solos). The current engine treats every notehead as a slash placeholder; this adds distinguishing real pitched notes from slash notation (`<notehead>slash`, slash `<measure-style>`) and converting between them. Pairs with the **M7 per-bar slash toggle**.
+5. **Lyrics _(optional, classic lead sheet)_** — edit `<lyric>` text under notes (syllables, melismas). A natural follow-on once notes are editable; can be its own phase.
+
+### Open questions / decisions this forces
+
+- **Does the melody sound, and how does it relate to the chord realization?** (PRD decision — same one P9's "transport plays the melody" half raises.) Block-voiced chords + a melody line need a mix/voice/mute story (ties to **P3** instrument picker + play-along mute).
+- **Reflow vs. Invariant #2.** "Patch, don't regenerate" is easy for pitch (one node) but stressed by duration edits that ripple through a bar. Define how far a single edit is allowed to rewrite, and confirm unedited *measures* still serialize byte-identical to the load baseline.
+- **Interaction with upstream Basic Pitch data.** The placeholder pitches we deliberately never sounded (PRD §8) become **editable real pitches** here — decide how melody authoring coexists with the upstream note/stem metadata Invariant #2 currently protects.
+- **Where the boundary is.** Lead sheet = **single melody line + chords + lyrics**. Explicitly *not* multi-voice/multi-staff/full engraving — set that non-goal up front to stop scope creep into a general notation editor.
+- **Editing stays overlay + DOM + re-render.** OSMD is render-only (Invariants #1/#4); note-drag needs an overlay "ghost" preview, not OSMD mutation.
+
+### Suggested phasing
+
+`P9 (audition + melody playback)` → `pitch editing (local)` → `rhythm editing + note entry (beat-budget engine)` → `slash↔pitched + rests` → `lyrics`. Each phase is independently shippable and useful; the product becomes a "lead-sheet editor" somewhere around the rhythm-editing phase.
+
+**Related:** **P9** (note playback — the first step), **P8** (enharmonic respell / `enharmonicAlternatives`, reused for pitch respell), **P7** (meter editing — shares the beat-math/`divisions` model the reflow engine needs), **P3** (instruments / play-along mute for a melody+chords mix), **P2** (lead-sheet conventions & road map).
+
+**Why deferred:** A deliberate expansion of the product's mission well beyond the PoC/MVP (M0–M8), which proves the chord-chart *correction* loop. Recorded here as the intended evolution path so the architecture decisions made for the MVP (DOM-as-truth, command layer, per-item overlay projection) are understood as the foundation this builds on — and so the hard part (rhythm reflow) is flagged before anyone assumes "it's just chord editing for notes."
