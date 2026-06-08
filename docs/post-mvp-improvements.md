@@ -135,3 +135,16 @@ The shipped M6 chord editor is an **editable combobox** — a text field plus a 
 - **Enharmonic respell** (B6.5/B6.11): for an accidental root, a one-click `Respell → <twin>` (C♯↔D♭) that flips spelling while keeping quality/bass — backed by a pure `enharmonicAlternatives(step, alter)` helper (reusable for **note respell in M7**, which is where the A3 right-click context menu will first be built).
 
 **Why deferred:** A full working prototype was built and verified (24/24 headless) on `feat/m6b-chord-picker`, then **cut on review as too complex for an MVP** — _"keep it simple as a dropdown with a list of chords"_ (2026-06-08). The dropdown stays the editor. This is recorded so the design (and the `enharmonicAlternatives` approach) isn't lost if a future, non-MVP iteration wants a richer builder.
+
+---
+
+## P9 — Single-note playback / audition
+
+Today only **chords** sound — the harmonic rhythm realized as block voicings ([`schedule.ts`](../src/audio/schedule.ts)). Individual noteheads are **slash placeholders** that only step the visual playhead and are deliberately **never sounded** (PRD §3, §8: "we never play the written placeholder pitch"). This captures two distinct ways to add note-level sound. _(Requested 2026-06-08, after the M6 chord-preview fix.)_
+
+**Scope / ideas:**
+
+- **Click-to-audition a note** _(low-hanging)_ — click/select a notehead → hear that single pitch, mirroring the M6 chord audition. Nearly all the machinery already exists: a note is just a one-element chord, so [`previewChord([midi])`](../src/audio/player.ts) already sounds it; [`computeStaffEntries`](../src/overlay/projector.ts) already emits clickable per-notehead anchors and [`ChordLayer`](../src/overlay/ChordLayer.tsx) mounts hit-zones over them; [`nthSoundingNote`](../src/commands/chord.ts) resolves `(measureIndex, noteIndex) → <note>`; and [`voicing.ts`](../src/audio/voicing.ts) already has the step/octave/alter→MIDI conversion. The **only missing code** is a ~20-line `<note>` → MIDI reader plus one branch in the existing click handler. Estimate: ~half a day + QA. Caveat: a no-op on pure slash/`<unpitched>` placeholders — only meaningful for notes carrying a real `<pitch>`.
+- **Transport plays the melody line** _(larger)_ — sound the written note line alongside the chord regions during playback. This **reverses the documented chord-chart reading** (slashes keep time but don't articulate; placeholder pitches are never played), so it needs a **PRD decision** before any code, plus schedule/playback changes to emit and sound per-note pitch events.
+
+**Why deferred:** Beyond the MVP milestone scope (M0–M8) and the chord-chart premise the engine is built on. Captured so the (surprisingly small) audition path and the bigger melody-playback question aren't lost. Surfaced when the chord-preview-cutoff fix was being closed out.
