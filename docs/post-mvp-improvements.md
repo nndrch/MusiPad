@@ -1,6 +1,6 @@
 # Post-MVP improvements
 
-A parking lot for work to pick up **after** the PoC/MVP milestones (PRD §9, M0–M8) are complete. These are deliberately out of scope for the MVP — captured here so they aren't lost. Not prioritized; not committed to a milestone.
+A parking lot for work to pick up **after** the PoC/MVP milestones (PRD §9, M0–M9) are complete. These are deliberately out of scope for the MVP — captured here so they aren't lost. Not prioritized; not committed to a milestone.
 
 ---
 
@@ -94,7 +94,7 @@ Items flagged by the M4 adversarial review and deliberately deferred — the cor
 - **Or: preserve playback position across a schedule rebuild.** The richer alternative to disabling — give `Player` a reload path that keeps `playing`/`positionSec` and re-strikes the held chord at the current position, so a tempo edit takes effect mid-play (fits the **M5** transport/playhead work).
 - **Extreme-key enharmonic round-trip.** Transpose is key-aware ([`transpose.ts`](../src/commands/transpose.ts) — it picks the fewest-accidental spelling, so keys stay within ±7 and read conventionally, e.g. A major ↓ = A♭ major). The one residual edge: the two extreme keys at exactly ±6/±7 fifths (F♯/G♭ and C♯/C♭ major) can round-trip (`+n` then `−n`) onto their _enharmonic equivalent_ spelling — musically identical, and these keys are practically absent from lead-sheet charts. A full respell policy (M7) could pin a house spelling here.
 - **Preserve non-canonical numeric text.** Transpose canonicalizes `alter` text (a source `"1.0"` becomes `"1"`); key/tempo edits are similar for numeric fields. Harmless for our pipeline (canonical integers only), but a fully byte-faithful patcher would leave untouched numeric formatting intact.
-- **Louder missing-data warning.** When a file loads without a key/tempo, M4 shows muted/italic empty-state placeholders ("no key", "no tempo") and the tempo field's "120" placeholder, and playback falls back to 120. A more prominent toast/banner is deferred to **M8** (toasts/empty states) since a coloured warning would break the §6.1 grayscale language used inline.
+- **Louder missing-data warning.** When a file loads without a key/tempo, M4 shows muted/italic empty-state placeholders ("no key", "no tempo") and the tempo field's "120" placeholder, and playback falls back to 120. A more prominent toast/banner is deferred to **M9** (toasts/empty states) since a coloured warning would break the §6.1 grayscale language used inline.
 
 **Why deferred:** None breaks an M4 acceptance criterion; each is a refinement on top of working, reversible edits.
 
@@ -115,15 +115,7 @@ The score renders at a fixed `NATURAL_WIDTH` and scales proportionally to fit th
 
 ## P7 — Meter / time-signature editing
 
-Today the chart's **meter (e.g. `4/4`) can't be edited.** M4 added the global edits (Key / Transpose / Tempo) but not the time signature, and meter editing isn't in the PRD §9 milestones. _(Requested 2026-06-08, after M6a.)_
-
-**Scope / ideas:**
-
-- Make the time signature on the staff **hover/click-editable the same way as chords** (M6): hover the `4/4` → an editable popover (a small "beats / beat-type" picker, reusing the A1 popover + the figure-level overlay pattern from `overlay/ChordLayer`). Commit via an undoable `Command` that patches `attributes/time` (`beats` + `beat-type`), preserving siblings (`@symbol`, `interchangeable`, `senza-misura`) per Invariant #2.
-- **Not just a label:** meter feeds the beat math — the metronome click grid and measure lengths in [`schedule.ts`](../src/audio/schedule.ts) and the slash-rhythm grid — so an edit must re-derive playback + re-project the overlay. Mid-piece meter changes (multiple `<time>`) are a further wrinkle; PoC scope could limit to the first/active meter like Key does.
-- Positioning the time-signature affordance reuses the M6 staff-entry/measure-box projection.
-
-**Why deferred:** New editing capability beyond the MVP milestone scope (M0–M8). It's a natural extension of the M6/M7 figure-level overlay editing; weigh it in the now-due 3-milestone post-MVP re-weigh for promotion into M7 or a follow-up milestone. Logged in [`roadmap.md`](./roadmap.md) under _Captured requests_.
+**Promoted to a milestone — M8** (M6 3-milestone re-weigh, CLAUDE.md rule 6, 2026-06-08). Scheduled as its own focused milestone after M7 rather than folded in, to keep M7 tight. Full scope + AC now live in [PRD §9 → M8](./musicxml-editor-prd.md) and [`roadmap.md`](./roadmap.md) (hover-edit the staff time signature → undoable `Command` patching `attributes/time`, re-deriving the `schedule.ts` beat math + slash grid). _No longer deferred._
 
 ## P8 — Structured chord builder (picker + enharmonic respell)
 
@@ -147,13 +139,13 @@ Today only **chords** sound — the harmonic rhythm realized as block voicings (
 - **Click-to-audition a note** _(low-hanging)_ — click/select a notehead → hear that single pitch, mirroring the M6 chord audition. Nearly all the machinery already exists: a note is just a one-element chord, so [`previewChord([midi])`](../src/audio/player.ts) already sounds it; [`computeStaffEntries`](../src/overlay/projector.ts) already emits clickable per-notehead anchors and [`ChordLayer`](../src/overlay/ChordLayer.tsx) mounts hit-zones over them; [`nthSoundingNote`](../src/commands/chord.ts) resolves `(measureIndex, noteIndex) → <note>`; and [`voicing.ts`](../src/audio/voicing.ts) already has the step/octave/alter→MIDI conversion. The **only missing code** is a ~20-line `<note>` → MIDI reader plus one branch in the existing click handler. Estimate: ~half a day + QA. Caveat: a no-op on pure slash/`<unpitched>` placeholders — only meaningful for notes carrying a real `<pitch>`.
 - **Transport plays the melody line** _(larger)_ — sound the written note line alongside the chord regions during playback. This **reverses the documented chord-chart reading** (slashes keep time but don't articulate; placeholder pitches are never played), so it needs a **PRD decision** before any code, plus schedule/playback changes to emit and sound per-note pitch events.
 
-**Why deferred:** Beyond the MVP milestone scope (M0–M8) and the chord-chart premise the engine is built on. Captured so the (surprisingly small) audition path and the bigger melody-playback question aren't lost. Surfaced when the chord-preview-cutoff fix was being closed out.
+**Why deferred:** Beyond the MVP milestone scope (M0–M9) and the chord-chart premise the engine is built on. Captured so the (surprisingly small) audition path and the bigger melody-playback question aren't lost. Surfaced when the chord-preview-cutoff fix was being closed out.
 
 ---
 
 ## P10 — Evolve into a full lead-sheet editor (melody/note editing)
 
-> **This is an epic / north-star, not a single deferred refinement.** It changes the product's identity — from a **chord-chart corrector** (fix the chords over a fixed slash grid; PRD §3, §8) into a **lead-sheet authoring tool** where the user also writes and edits the **melody** itself. It therefore needs a **product-level decision and its own PRD track** (a milestone series beyond M0–M8), not just a slot in an existing milestone. P9 (note playback) is the first, smallest step on this path; this entry is the whole arc. _(Requested 2026-06-08.)_
+> **This is an epic / north-star, not a single deferred refinement.** It changes the product's identity — from a **chord-chart corrector** (fix the chords over a fixed slash grid; PRD §3, §8) into a **lead-sheet authoring tool** where the user also writes and edits the **melody** itself. It therefore needs a **product-level decision and its own PRD track** (a milestone series beyond M0–M9), not just a slot in an existing milestone. P9 (note playback) is the first, smallest step on this path; this entry is the whole arc. _(Requested 2026-06-08.)_
 
 A lead sheet is **melody (pitched notes + rhythm) + chord symbols (+ optionally lyrics)**. MusiPad already owns the chord-symbol half (M6) and renders/round-trips real notation; what's missing is **editing the notes**: their pitch, their rhythm, and adding/removing them.
 
@@ -194,4 +186,4 @@ The MVP's structural seams (Invariant #5) were built for exactly this kind of ex
 
 **Related:** **P9** (note playback — the first step), **P8** (enharmonic respell / `enharmonicAlternatives`, reused for pitch respell), **P7** (meter editing — shares the beat-math/`divisions` model the reflow engine needs), **P3** (instruments / play-along mute for a melody+chords mix), **P2** (lead-sheet conventions & road map).
 
-**Why deferred:** A deliberate expansion of the product's mission well beyond the PoC/MVP (M0–M8), which proves the chord-chart *correction* loop. Recorded here as the intended evolution path so the architecture decisions made for the MVP (DOM-as-truth, command layer, per-item overlay projection) are understood as the foundation this builds on — and so the hard part (rhythm reflow) is flagged before anyone assumes "it's just chord editing for notes."
+**Why deferred:** A deliberate expansion of the product's mission well beyond the PoC/MVP (M0–M9), which proves the chord-chart *correction* loop. Recorded here as the intended evolution path so the architecture decisions made for the MVP (DOM-as-truth, command layer, per-item overlay projection) are understood as the foundation this builds on — and so the hard part (rhythm reflow) is flagged before anyone assumes "it's just chord editing for notes."

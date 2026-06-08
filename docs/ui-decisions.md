@@ -1,6 +1,6 @@
 # UI decisions — scoping worksheet
 
-Open UI/UX decisions for the remaining milestones (M5–M8) and the post‑MVP backlog, so they can be defined deliberately rather than improvised during the build. This complements the **UI/UX spec** in [`musicxml-editor-prd.md`](./musicxml-editor-prd.md) §6 (which sets the design language and the intended interactions) and the status view in [`roadmap.md`](./roadmap.md).
+Open UI/UX decisions for the remaining milestones (M5–M9) and the post‑MVP backlog, so they can be defined deliberately rather than improvised during the build. This complements the **UI/UX spec** in [`musicxml-editor-prd.md`](./musicxml-editor-prd.md) §6 (which sets the design language and the intended interactions) and the status view in [`roadmap.md`](./roadmap.md).
 
 **How to use this doc**
 
@@ -49,7 +49,7 @@ Used for "Respell" (note M7) and possibly section/annotation remove. Trigger, lo
 
 ### A4. Toast — _first needed: M7_ 🔲
 
-Quiet, bottom‑left (PRD §6.4). Position, duration, stacking, dismiss, success vs error variants. Used for Download + parse errors; polished in M8.
+Quiet, bottom‑left (PRD §6.4). Position, duration, stacking, dismiss, success vs error variants. Used for Download + parse errors; polished in M9.
 
 - **Decision:** _TBD_
 
@@ -138,15 +138,24 @@ These build on M5's beat-anchor scaffold (now refined to real note graphics — 
 - **B7.7 Section/annotation item hover → accent** _(carried over from the M5 hover/selection pass)_ — hovering a section pill or annotation highlights it in **100% accent** (A2 item level); they become hoverable items once they're HTML overlays here. 🔲
   - **Decision:** _TBD_
 
-### M8 — Polish
+### M8 — Meter / time-signature editing
 
-- **B8.1 Keyboard shortcut map** — beyond ⌘Z/⌘⇧Z: space = play/pause? Delete = remove selected? Esc conventions. 🔲
+Promoted from post-MVP **P7** in the M6 re-weigh (2026-06-08); its own milestone after M7. UI decisions to settle when M8 is scoped.
+
+- **B8.1 Time-signature affordance** — how the staff `4/4` is hover/click-targeted (reuse the M6 staff-entry/measure-box projection); popover trigger + placement. 🔲
   - **Decision:** _TBD_
-- **B8.2 Empty / error state polish** — dropzone, parse error, render error. 🔲
+- **B8.2 Meter popover shape** — beats / beat-type input (steppers vs dropdowns vs text); how `senza-misura` and the common/cut-time `@symbol` are surfaced. 🔲
   - **Decision:** _TBD_
-- **B8.3 Hover/active audit** — consistency pass against §6.1. 🔲
+
+### M9 — Polish
+
+- **B9.1 Keyboard shortcut map** — beyond ⌘Z/⌘⇧Z: space = play/pause? Delete = remove selected? Esc conventions. 🔲
   - **Decision:** _TBD_
-- **B8.4 Toast polish** — finalize the system started in M7 (A4). 🔲
+- **B9.2 Empty / error state polish** — dropzone, parse error, render error. 🔲
+  - **Decision:** _TBD_
+- **B9.3 Hover/active audit** — consistency pass against §6.1. 🔲
+  - **Decision:** _TBD_
+- **B9.4 Toast polish** — finalize the system started in M7 (A4). 🔲
   - **Decision:** _TBD_
 
 ---

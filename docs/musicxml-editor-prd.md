@@ -314,7 +314,15 @@ Ships in **two PRs** (see `docs/ui-decisions.md` B6).
 - **Print** (promoted from post-MVP P4): a Print button beside Download that prints the score via `@media print` CSS — score only (topbar/transport/cursor/overlays hidden). Full client-side **A4 PDF generation** stays in P4.
 - **AC:** Drag a section to another bar; add an annotation; toggle slashes; download → reopening the file shows all edits; unedited measures identical to the load baseline; declaration/DOCTYPE intact. Print produces a clean score-only page.
 
-### M8 — Polish
+### M8 — Meter / time-signature editing
+
+Promoted from post-MVP **P7** in the M6 3-milestone re-weigh (CLAUDE.md rule 6, 2026-06-08): its own focused milestone after M7 rather than bloating M7's scope.
+
+- Make the time signature on the staff **hover/click-editable like chords** (reuse the M6 hover-popover + figure-level overlay pattern): hover the `4/4` → a small "beats / beat-type" popover; commit via an **undoable `Command`** patching `attributes/time` (`beats` + `beat-type`), preserving siblings (`@symbol`, `interchangeable`, `senza-misura`) per Invariant #2.
+- **Not just a label:** meter feeds the beat math — the metronome click grid + measure lengths in `schedule.ts` and the slash-rhythm grid — so an edit must re-derive playback and re-project the overlay. PoC scope may limit to the first/active meter (like Key); mid-piece `<time>` changes are a further wrinkle.
+- **AC:** Edit a bar's meter (e.g. `4/4` → `3/4`); it persists in the DOM/download; the metronome grid, measure length, and slash grid re-derive to match; undoable; unedited measures identical to the load baseline.
+
+### M9 — Polish
 
 - Toasts, empty/error states, keyboard shortcuts, hover/active states audit against §6.
 - **AC:** Feels like the §6 spec: quiet, grayscale, single orange accent, notepad calm.
@@ -377,7 +385,7 @@ npm i -D prettier eslint
 npm run dev
 ```
 
-Then proceed **M0 → M8**, opening one PR per milestone, never advancing past failing acceptance criteria. Keep §4 Invariants visible in the repo (copy them into `CONTRIBUTING.md` or the top of `commands/Command.ts`).
+Then proceed **M0 → M9**, opening one PR per milestone, never advancing past failing acceptance criteria. Keep §4 Invariants visible in the repo (copy them into `CONTRIBUTING.md` or the top of `commands/Command.ts`).
 
 ---
 
