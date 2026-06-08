@@ -12,6 +12,8 @@
  * slash chords); voice-leading/inversions are post-MVP (PRD §15).
  */
 
+import type { ChordSpec } from '../model/chordSymbol';
+
 /** A parsed chord ready to be sounded. */
 export interface Voicing {
   /** MIDI note numbers to sound together (empty ⇒ silence, e.g. kind "none"). */
@@ -105,9 +107,46 @@ export function voicingFromHarmony(harmony: Element): Voicing | null {
     harmony.querySelector('root > root-alter')?.textContent,
     0,
   );
-
   const kind =
     harmony.querySelector('kind')?.textContent?.trim().toLowerCase() ?? 'major';
+  const bassStep = harmony
+    .querySelector('bass > bass-step')
+    ?.textContent?.trim()
+    .toUpperCase();
+  const bassAlter = numberOr(
+    harmony.querySelector('bass > bass-alter')?.textContent,
+    0,
+  );
+
+  return voicingFromParts(rootStep, rootAlter, kind, bassStep, bassAlter);
+}
+
+/**
+ * Voicing for a parsed `ChordSpec` — the editor's live audition path (M6),
+ * sharing the same voicing math as the playback realization above so a chord
+ * previews exactly as it will sound.
+ */
+export function voicingFromSpec(spec: ChordSpec): Voicing | null {
+  if (!spec.rootStep) return null;
+  return voicingFromParts(
+    spec.rootStep.toUpperCase(),
+    spec.rootAlter,
+    spec.kind.toLowerCase(),
+    spec.bassStep?.toUpperCase(),
+    spec.bassAlter ?? 0,
+  );
+}
+
+/** Shared core: root/kind/bass → block-voicing MIDI pitches. */
+function voicingFromParts(
+  rootStep: string,
+  rootAlter: number,
+  kind: string,
+  bassStep: string | undefined,
+  bassAlter: number,
+): Voicing | null {
+  if (!(rootStep in STEP_SEMITONE)) return null;
+
   // Enum keys are lower-case except the functional/Tristan names; match either.
   const intervals = KIND_INTERVALS[kind] ?? lookupMixedCase(kind) ?? [0, 4, 7];
   if (intervals.length === 0) return { pitches: [] };
@@ -117,15 +156,7 @@ export function voicingFromHarmony(harmony: Element): Voicing | null {
   const pitches = intervals.map((semi) => rootMidi + semi);
 
   // Slash chord: sound the alternate bass an octave below the chord body.
-  const bassStep = harmony
-    .querySelector('bass > bass-step')
-    ?.textContent?.trim()
-    .toUpperCase();
   if (bassStep && bassStep in STEP_SEMITONE) {
-    const bassAlter = numberOr(
-      harmony.querySelector('bass > bass-alter')?.textContent,
-      0,
-    );
     const bassPc = (STEP_SEMITONE[bassStep] + bassAlter + 120) % 12;
     pitches.unshift(BASS_OCTAVE_BASE + bassPc);
   }

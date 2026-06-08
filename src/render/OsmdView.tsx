@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import type { ScoreInfo } from '../model/scoreInfo';
+import type { ChordSpec } from '../model/chordSymbol';
 import { OverlayLayer } from '../overlay/OverlayLayer';
+import { ChordLayer } from '../overlay/ChordLayer';
 import { ScoreHeader } from './ScoreHeader';
 import { NATURAL_WIDTH, useOsmd } from './useOsmd';
 import './OsmdView.css';
@@ -23,6 +25,16 @@ interface OsmdViewProps {
   /** Bar the playhead is in (-1 if none) — drives the playing highlight (M5). */
   playingMeasure: number;
   isPlaying: boolean;
+  /** Add or replace a chord at a beat (M6) — undoable command, audition feedback. */
+  onSetChord: (
+    measureIndex: number,
+    entryIndex: number,
+    spec: ChordSpec,
+  ) => void;
+  /** Remove a chord at a beat (M6). */
+  onRemoveChord: (measureIndex: number, entryIndex: number) => void;
+  /** Audition a chord (the editor's Hear button, M6). */
+  onPreviewChord: (spec: ChordSpec) => void;
 }
 
 /**
@@ -42,6 +54,9 @@ export function OsmdView({
   onSeekMeasure,
   playingMeasure,
   isPlaying,
+  onSetChord,
+  onRemoveChord,
+  onPreviewChord,
 }: OsmdViewProps) {
   // Bump a render signal after each successful OSMD render so the overlay
   // re-projects its measure boxes; also forward the instance to App (M2).
@@ -141,6 +156,17 @@ export function OsmdView({
               playingMeasure={playingMeasure}
               isPlaying={isPlaying}
               scrollRef={scrollRef}
+            />
+            <ChordLayer
+              osmdRef={osmdRef}
+              hostRef={containerRef}
+              renderSignal={renderSignal}
+              doc={doc}
+              revision={revision ?? 0}
+              isPlaying={isPlaying}
+              onSetChord={onSetChord}
+              onRemoveChord={onRemoveChord}
+              onPreview={onPreviewChord}
             />
           </div>
           {status === 'rendering' && (

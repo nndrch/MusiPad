@@ -68,6 +68,16 @@ function buildRenderDoc(doc: Document): Document {
 /** Tweaks so loaded section marks and chord symbols don't collide. */
 function applyEngravingRules(osmd: OpenSheetMusicDisplay): void {
   const rules = osmd.EngravingRules;
+  // Chords (M6): we render our own HTML pills in the overlay (decision B6.1),
+  // so OSMD's drawn glyphs are made invisible — but we keep `RenderChordSymbols`
+  // on so OSMD still *reserves* the chord row above the staff and lays the
+  // systems out exactly as in M5. That gives our pills their room with zero
+  // layout shift (and keeps rehearsal-mark spacing intact). Painting the glyphs
+  // transparent (rather than stripping `<harmony>` from the render clone) is
+  // what preserves that reserved space.
+  (
+    rules as unknown as { DefaultColorChordSymbol: string }
+  ).DefaultColorChordSymbol = '#00000000';
   // Lift rehearsal marks (sections) clearly above the chord-symbol row.
   // In this OSMD version positive offset moves the mark UP; the default (-15)
   // sits on top of the chords, so push it well above them.

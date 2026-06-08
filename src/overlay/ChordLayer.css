@@ -1,0 +1,95 @@
+/*
+ * Chord layer over OSMD's SVG (M6). We draw our own HTML chord pills (OSMD's
+ * glyphs are suppressed in useOsmd) plus per-slash select targets and the ＋
+ * add affordance. Like the M5 overlay it's click-through except for its own
+ * items, and it lives inside `.osmd-scale` so it rides the zoom transform.
+ * Visual language (PRD §6.1): grayscale base, the single orange accent reserved
+ * for the active editing item (selected slash, hovered/active chord, ＋).
+ */
+.chord-layer {
+  position: absolute;
+  pointer-events: none; /* clicks fall through (to bar seek / deselect) … */
+  z-index: 2; /* … above the M5 selection/playing overlay (z-index 1) */
+}
+
+/* Chord pill — our own rendering of a `<harmony>`. It must be **indistinguishable
+   from OSMD's engraved chord** (B6.1): same font (Times New Roman), weight
+   (normal), size (matches OSMD's `ChordSymbolTextHeight` ≈ 20px in score space —
+   the pill is inside `.osmd-scale`, so it scales in lockstep), and chart ink. It
+   sits in the chord row OSMD reserves (its top = the measure box top, which is
+   exactly where OSMD draws the chord — so no `-100%` lift, which previously
+   collided with the rehearsal mark). Recolors to the accent on hover / while its
+   editor is open (the mockup's "chord turns accent"). */
+.chord-pill {
+  position: absolute;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+  margin: 0;
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 20px;
+  font-weight: normal;
+  line-height: 1.25;
+  white-space: nowrap;
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    color 90ms ease,
+    background-color 90ms ease;
+}
+.chord-pill:hover,
+.chord-pill.is-active {
+  color: var(--accent);
+  background: var(--accent-tint);
+}
+
+/* Suppress editing affordances while playing: pills stay visible (display-only)
+   so the chart still reads, but clicks pass through to the seek overlay. */
+.chord-layer.is-playing .chord-pill {
+  pointer-events: none;
+}
+
+/* Hover zone over an *empty* slash (no chord above it). Invisible itself — its
+   only job is to reveal the ＋. Chord-add stays separate from note editing, so
+   it draws no selection highlight on the note (the note's own edit/selection is
+   a later concern, M7). */
+.chord-slot {
+  position: absolute;
+  pointer-events: auto;
+}
+
+/* ＋ above an empty note — revealed on hovering its slot, hidden otherwise.
+   Sits in the chord row the pill would occupy (top of the slot = measure box
+   top), centered over the note. Click it to open the editor (add). */
+.chord-add {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: var(--shadow-pop);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 90ms ease,
+    background-color 90ms ease;
+}
+.chord-slot:hover .chord-add {
+  opacity: 1;
+  pointer-events: auto;
+}
+.chord-add:hover {
+  background: var(--accent-hover);
+}

@@ -20,6 +20,8 @@ export interface TransportControls {
   /** Move the playhead to a measure's start; continues if playing (M5). */
   seekToMeasure: (measureIndex: number) => void;
   setMetronome: (enabled: boolean) => void;
+  /** Sound a chord once as editor feedback (M6 audition). */
+  previewChord: (pitches: number[]) => void;
 }
 
 const INITIAL_STATE: TransportState = {
@@ -75,8 +77,12 @@ export function useTransport(
     (enabled: boolean) => playerRef.current?.setMetronome(enabled),
     [],
   );
+  const previewChord = useCallback(
+    (pitches: number[]) => playerRef.current?.previewChord(pitches),
+    [],
+  );
 
-  return { state, toggle, seek, seekToMeasure, setMetronome };
+  return { state, toggle, seek, seekToMeasure, setMetronome, previewChord };
 }
 
 /**
