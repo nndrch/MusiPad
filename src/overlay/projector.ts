@@ -43,10 +43,17 @@ export interface StaffEntryAnchor {
   entryIndex: number;
   /** Anchor x in unscaled px — the notehead position. */
   x: number;
-  /** Top of the staff box in px — the chord row sits just above this. */
-  staffTopY: number;
-  /** Staff box height in px — the vertical extent of the slash hit target. */
-  staffHeight: number;
+  /**
+   * Chord-row top in px — where a pill / ＋ sits. **Uniform per system**: the
+   * highest measure-box top on the line, so a chord in any bar defines the row
+   * for the whole line. (OSMD only reserves chord-row space above bars that
+   * actually have a chord, so a chord-less bar's own box top would sit at the
+   * staff — using the per-system row keeps the ＋ aligned with neighbouring
+   * pills.)
+   */
+  chordRowY: number;
+  /** Bottom of this note's measure box in px — the slash hit zone runs to here. */
+  slotBottomY: number;
 }
 
 // Minimal structural views over OSMD's runtime objects (its `.d.ts` doesn't
@@ -67,6 +74,11 @@ interface GMeasure {
   PositionAndShape: BBox;
   ParentMusicSystem?: { PositionAndShape: BBox };
   staffEntries?: { PositionAndShape: BBox }[];
+}
+
+/** Bottom edge of a bounding box, in units. */
+function boxBottom(bb: BBox): number {
+  return bb.AbsolutePosition.y + bb.BorderBottom;
 }
 
 /**
@@ -169,12 +181,30 @@ export function computeStaffEntries(
   if (!measureList || measureList.length === 0) return [];
 
   const k = pxPerUnit(osmd, svg);
-  const anchors: StaffEntryAnchor[] = [];
 
+  // Pass 1 — the chord row for each system (= the highest measure-box top on
+  // the line). A bar with a chord has its box top raised to include the chord
+  // row; a chord-less bar's top sits at the staff. Taking the min-top per
+  // system gives one chord-row baseline so the ＋ aligns with the line's pills.
+  const systemRowTop = new Map<object, number>();
+  for (const row of measureList) {
+    const gm = row?.[0];
+    const sys = gm?.ParentMusicSystem;
+    if (!gm?.PositionAndShape || !sys) continue;
+    const top = boxTopHeight(gm.PositionAndShape).top;
+    const prev = systemRowTop.get(sys);
+    if (prev === undefined || top < prev) systemRowTop.set(sys, top);
+  }
+
+  // Pass 2 — one anchor per note onset.
+  const anchors: StaffEntryAnchor[] = [];
   for (let mi = 0; mi < measureList.length; mi++) {
     const gm = measureList[mi]?.[0];
     if (!gm?.PositionAndShape) continue;
-    const { top, height } = boxTopHeight(gm.PositionAndShape);
+    const ownTop = boxTopHeight(gm.PositionAndShape).top;
+    const sys = gm.ParentMusicSystem;
+    const rowTop = (sys && systemRowTop.get(sys)) ?? ownTop;
+    const bottom = boxBottom(gm.PositionAndShape);
     const entries = gm.staffEntries ?? [];
 
     for (let ei = 0; ei < entries.length; ei++) {
@@ -184,8 +214,8 @@ export function computeStaffEntries(
         measureIndex: mi,
         entryIndex: ei,
         x: bb.AbsolutePosition.x * k,
-        staffTopY: top * k,
-        staffHeight: height * k,
+        chordRowY: rowTop * k,
+        slotBottomY: bottom * k,
       });
     }
   }

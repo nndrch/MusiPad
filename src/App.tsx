@@ -118,7 +118,7 @@ function Score({ doc, fileName, defaults, onClose }: ScoreProps) {
   // #3); adding/updating also auditions the new chord (B6.12) via the same
   // voicing path playback uses. `previewChord` is a stable callback, so these
   // handlers keep a stable identity (the memoized chord layer doesn't churn).
-  const { previewChord } = transport;
+  const { previewChord, seek, seekToMeasure } = transport;
   const auditionSpec = useCallback(
     (spec: ChordSpec) => {
       const voicing = voicingFromSpec(spec);
@@ -151,6 +151,24 @@ function Score({ doc, fileName, defaults, onClose }: ScoreProps) {
     setSelectedMeasure(null);
   }
 
+  // Selecting a bar **cues the play-start**: Play begins from the selected bar;
+  // with nothing selected it plays from the top. We do this by seeking the
+  // (paused) playhead to the bar on select, and back to 0 on deselect — so the
+  // transport just plays from its current position. While playing we don't seek
+  // here: bar clicks already seek via onSeekMeasure (B5.8), and Esc/deselect
+  // must not yank playback back to the start.
+  const isPlaying = transport.state.isPlaying;
+  const handleSelectMeasure = useCallback(
+    (measureIndex: number | null) => {
+      setSelectedMeasure(measureIndex);
+      if (!isPlaying) {
+        if (measureIndex == null) seek(0);
+        else seekToMeasure(measureIndex);
+      }
+    },
+    [isPlaying, seek, seekToMeasure],
+  );
+
   // Dismissible alert when defaults were assigned on load (PRD §11). Reset when
   // a new file loads (a fresh `defaults` object) by adjusting state in render.
   const [dismissedFor, setDismissedFor] = useState<DefaultsApplied | null>(
@@ -164,7 +182,7 @@ function Score({ doc, fileName, defaults, onClose }: ScoreProps) {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        setSelectedMeasure(null);
+        handleSelectMeasure(null);
         return;
       }
       if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return;
@@ -174,7 +192,7 @@ function Score({ doc, fileName, defaults, onClose }: ScoreProps) {
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo]);
+  }, [undo, redo, handleSelectMeasure]);
 
   return (
     <div className="app">
@@ -204,7 +222,7 @@ function Score({ doc, fileName, defaults, onClose }: ScoreProps) {
         onRendered={handleRendered}
         revision={revision}
         selectedMeasure={selectedMeasure}
-        onSelectMeasure={setSelectedMeasure}
+        onSelectMeasure={handleSelectMeasure}
         onSeekMeasure={transport.seekToMeasure}
         playingMeasure={transport.state.currentMeasure}
         isPlaying={transport.state.isPlaying}
