@@ -125,3 +125,41 @@
   color: var(--text-faint);
   font-size: 11px;
 }
+
+/* Per-bar Slashes toggle (M7). Quiet like the other chips; when on, an accent
+   "active" state (accent reserved for active/selected/primary, §6.1/A2) — a
+   tint, not a fill (the solid orange fill is the Download primary's alone). */
+.toolbar__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: var(--font-ui);
+}
+
+.toolbar__toggle:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.toolbar__toggle:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.toolbar__toggle.is-active {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.toolbar__toggle:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 1px;
+}

@@ -13,6 +13,7 @@ import { setKeySignature } from './commands/key';
 import { transpose } from './commands/transpose';
 import { setTempo } from './commands/tempo';
 import { removeChordAt, setChordAt } from './commands/chord';
+import { barSlashState, setBarSlashes } from './commands/slashes';
 import { voicingFromSpec } from './audio/voicing';
 import type { ChordSpec } from './model/chordSymbol';
 import { Dropzone } from './ui/Dropzone';
@@ -189,6 +190,18 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
     [isPlaying, seek, seekToMeasure],
   );
 
+  // Slash toggle (M7): the toolbar control acts on the selected bar.
+  const slashState = useMemo(() => {
+    // `doc` is mutated in place by commands, so `revision` is the re-read
+    // trigger (its identity doesn't change) — referenced so it's a real dep.
+    void revision;
+    return selectedMeasure == null ? null : barSlashState(doc, selectedMeasure);
+  }, [doc, revision, selectedMeasure]);
+  const handleToggleSlashes = useCallback(() => {
+    if (selectedMeasure == null || !slashState?.slashable) return;
+    dispatch(setBarSlashes(selectedMeasure, !slashState.allSlashed));
+  }, [dispatch, selectedMeasure, slashState]);
+
   // Dismissible alert when defaults were assigned on load (PRD §11). Reset when
   // a new file loads (a fresh `defaults` object) by adjusting state in render.
   const [dismissedFor, setDismissedFor] = useState<DefaultsApplied | null>(
@@ -231,6 +244,8 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         onSetKey={(fifths, mode) => dispatch(setKeySignature(fifths, mode))}
         onTranspose={(semitones) => dispatch(transpose(semitones))}
         onSetTempo={(bpm) => dispatch(setTempo(bpm))}
+        slashState={slashState}
+        onToggleSlashes={handleToggleSlashes}
       />
       {showBanner && (
         <Banner

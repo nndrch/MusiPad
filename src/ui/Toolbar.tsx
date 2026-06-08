@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
-import { Minus, Plus } from 'lucide-react';
+import { Minus, Plus, Slash } from 'lucide-react';
 import { keyLabel, type ScoreInfo } from '../model/scoreInfo';
+import type { BarSlashState } from '../commands/slashes';
 import './Toolbar.css';
 
 // Tempo bounds for the input (quarter-notes/min). Generous but sane.
@@ -31,14 +32,28 @@ interface ToolbarProps {
   onTranspose: (semitones: number) => void;
   /** Set the initial tempo (BPM); drives playback. */
   onSetTempo: (bpm: number) => void;
+  /**
+   * Slash state of the selected bar (M7), or null when no bar is selected.
+   * Drives the Slashes toggle's enabled + on/off (active) reflection.
+   */
+  slashState: BarSlashState | null;
+  /** Toggle rhythm slashes on the selected bar. */
+  onToggleSlashes: () => void;
 }
 
 /**
- * Global-edit toolbar (PRD §6.2, M4): Key relabel ▾, Transpose ±, Tempo input.
- * Quiet and inline per the design language (§6.1) — these are the only global
- * controls. Each control's change dispatches an undoable command via App.
+ * Edit toolbar (PRD §6.2, M4/M7): Key relabel ▾, Transpose ±, Tempo input, and
+ * a per-bar Slashes toggle (M7). Quiet and inline per the design language
+ * (§6.1). Each control's change dispatches an undoable command via App.
  */
-export function Toolbar({ info, onSetKey, onTranspose, onSetTempo }: ToolbarProps) {
+export function Toolbar({
+  info,
+  onSetKey,
+  onTranspose,
+  onSetTempo,
+  slashState,
+  onToggleSlashes,
+}: ToolbarProps) {
   const keyId = useId();
   const tempoId = useId();
 
@@ -165,6 +180,26 @@ export function Toolbar({ info, onSetKey, onTranspose, onSetTempo }: ToolbarProp
           }}
         />
         <span className="toolbar__unit">BPM</span>
+      </div>
+
+      <div className="toolbar__divider" />
+
+      <div className="toolbar__group">
+        <button
+          type="button"
+          className={`toolbar__toggle${slashState?.allSlashed ? ' is-active' : ''}`}
+          onClick={onToggleSlashes}
+          disabled={!slashState?.slashable}
+          aria-pressed={slashState?.allSlashed ?? false}
+          title={
+            slashState?.slashable
+              ? 'Toggle rhythm slashes on the selected bar'
+              : 'Select a bar to toggle its slashes'
+          }
+        >
+          <Slash size={15} strokeWidth={2} />
+          Slashes
+        </button>
       </div>
     </div>
   );
