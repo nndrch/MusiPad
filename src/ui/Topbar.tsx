@@ -1,4 +1,4 @@
-import { FileMusic, Redo2, Undo2, X } from 'lucide-react';
+import { Download, FileMusic, Printer, Redo2, Undo2, X } from 'lucide-react';
 import './Topbar.css';
 
 // The undo/redo handler accepts both ⌘ (Mac) and Ctrl (Windows/Linux); show the
@@ -15,15 +15,20 @@ interface TopbarProps {
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  /** Save the live DOM as a `.musicxml` download (M7). */
+  onDownload: () => void;
+  /** Print the score (browser print dialog, score-only via `@media print`, M7). */
+  onPrint: () => void;
   /** Close the current score and return to the empty state. */
   onClose: () => void;
 }
 
 /**
- * Slim topbar (PRD §6.2). Shows the loaded file name and Undo/Redo (M3) —
- * disabled/faint when their stack is empty (PRD §6.4). Key / Tempo / Feel are
- * surfaced by the toolbar controls and the document subline (M4), not here. The
- * orange Download button arrives in M7.
+ * Slim topbar (PRD §6.2). Shows the loaded file name, Undo/Redo (M3) —
+ * disabled/faint when their stack is empty (PRD §6.4) — and the M7 output
+ * actions: a single orange **Download** primary (the app's only accent button,
+ * PRD §6.1/§6.2) plus a neutral **Print**. Key / Tempo / Feel are surfaced by
+ * the toolbar controls and the document subline (M4), not here.
  */
 export function Topbar({
   fileName,
@@ -31,6 +36,8 @@ export function Topbar({
   canRedo,
   onUndo,
   onRedo,
+  onDownload,
+  onPrint,
   onClose,
 }: TopbarProps) {
   return (
@@ -64,6 +71,25 @@ export function Topbar({
           <Redo2 size={16} strokeWidth={1.75} />
         </button>
       </div>
+
+      <button
+        type="button"
+        className="topbar__btn"
+        onClick={onPrint}
+        title="Print the score"
+      >
+        <Printer size={14} strokeWidth={1.75} />
+        Print
+      </button>
+      <button
+        type="button"
+        className="topbar__btn topbar__btn--primary"
+        onClick={onDownload}
+        title="Download as MusicXML"
+      >
+        <Download size={14} strokeWidth={1.75} />
+        Download
+      </button>
 
       <button type="button" className="topbar__btn" onClick={onClose}>
         <X size={14} strokeWidth={1.75} />

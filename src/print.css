@@ -1,0 +1,86 @@
+/*
+ * Print stylesheet (M7, ui-decisions B7.6). Print = the score only, on paper.
+ *
+ * On screen the score is laid out at a fixed NATURAL_WIDTH (1200px) and fit to
+ * the viewport with `transform: scale()` on an absolutely-positioned
+ * `.osmd-scale` (its height reserved by a JS-set inline height on `.osmd-page`).
+ * That screen scale is keyed to the window, not the page, so for print we instead:
+ *   - hide all app chrome (topbar, toolbar, transport, banner, overlays, the
+ *     add-chord affordances, and the body-portaled chord editor);
+ *   - drop the scroll / flex / height:100% chain so the sheet flows down the page;
+ *   - re-fit the 1200px score with `zoom` rather than `transform` — `zoom` scales
+ *     the layout box too, so `.osmd-page` reserves the right height and the
+ *     absolutely-positioned chord pills stay aligned (a `transform` would not).
+ *     1200px @96dpi = 12.5in; A4 portrait printable width (210mm − 2×12mm) ≈
+ *     7.33in, so zoom ≈ 0.58. Tunable via `--print-zoom`.
+ *
+ * The document header (title + Key·Tempo subline) prints above the score; the
+ * HTML chord pills print in black ink.
+ *
+ * KNOWN LIMITATION (MVP): OSMD renders the whole score as ONE continuous SVG, so
+ * a chart taller than one page is sliced at the page boundary — cutting through
+ * whichever system straddles it. CSS can't avoid this (you can't break "between
+ * systems" inside a single SVG). Print is therefore clean only for charts that
+ * fit one page. A clip-free paginated re-render (off-screen OSMD at A4_P page
+ * format) is the proper fix — deferred to post-MVP P4 (the A4-PDF foundation).
+ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  /* Hide everything that isn't the score sheet. */
+  .topbar,
+  .toolbar,
+  .banner,
+  .transport,
+  .overlay-layer,
+  .chord-slot,
+  .chord-add,
+  .chord-editor,
+  .osmd-status {
+    display: none !important;
+  }
+
+  /* Let the document flow down the page instead of living in a fixed-height,
+     internally-scrolling app shell. */
+  html,
+  body,
+  #root,
+  .app {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .app {
+    display: block !important;
+  }
+  .osmd-scroll {
+    flex: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  .osmd-paper {
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Re-fit the fixed-width score to the page via `zoom` (see header note). */
+  .osmd-page {
+    height: auto !important;
+  }
+  .osmd-scale {
+    /* relative (not static): in-flow so it reserves the zoomed height, and still
+       the containing block for the absolutely-positioned chord pills. */
+    position: relative !important;
+    transform: none !important;
+    width: 1200px !important; /* NATURAL_WIDTH */
+    zoom: var(--print-zoom, 0.58);
+  }
+
+  /* Chord symbols are HTML pills (not part of the SVG) — print them in ink. */
+  .chord-pill {
+    color: #000 !important;
+  }
+}

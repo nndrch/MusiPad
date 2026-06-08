@@ -83,3 +83,18 @@
   background: var(--surface-hover);
   color: var(--text);
 }
+
+/* The single orange primary — Download (PRD §6.1/§6.2). The only accent-filled
+   button in the app; Print sits beside it as the neutral secondary. */
+.topbar__btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 500;
+}
+
+.topbar__btn--primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #fff;
+}

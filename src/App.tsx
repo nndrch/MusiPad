@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import { LocalFileIO } from './io/LocalFileIO';
-import { parseXml } from './model/xmlDoc';
+import type { ScoreIO } from './io/ScoreIO';
+import { parseXml, serializeXml } from './model/xmlDoc';
 import { applyDefaults, type DefaultsApplied } from './model/defaults';
 import { readScoreInfo } from './model/scoreInfo';
 import { OsmdView } from './render/OsmdView';
@@ -19,6 +20,7 @@ import { Topbar } from './ui/Topbar';
 import { Toolbar } from './ui/Toolbar';
 import { Banner } from './ui/Banner';
 import './App.css';
+import './print.css';
 
 /**
  * App shell (M1). Empty state → dropzone; once a score loads, the topbar +
@@ -30,22 +32,27 @@ export default function App() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [defaults, setDefaults] = useState<DefaultsApplied | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The IO adapter is retained after load so Download (M7) can save through the
+  // same seam (PRD §7.5) and reuse the source filename — see `Score`.
+  const [io, setIo] = useState<ScoreIO | null>(null);
 
   async function handleFile(file: File) {
     setError(null);
     try {
-      const io = new LocalFileIO(file);
-      const text = await io.load();
+      const fileIo = new LocalFileIO(file);
+      const text = await fileIo.load();
       const parsed = parseXml(text);
       // Assign C major / 120 BPM if the file is missing them (PRD §11);
       // `defaults` (a fresh object per load) drives the dismissible alert.
       setDefaults(applyDefaults(parsed));
       setDoc(parsed);
       setFileName(file.name);
+      setIo(fileIo);
     } catch (err) {
       setDoc(null);
       setFileName(null);
       setDefaults(null);
+      setIo(null);
       setError(err instanceof Error ? err.message : String(err));
     }
   }
@@ -54,10 +61,11 @@ export default function App() {
     setDoc(null);
     setFileName(null);
     setDefaults(null);
+    setIo(null);
     setError(null);
   }
 
-  if (!doc || !fileName || !defaults) {
+  if (!doc || !fileName || !defaults || !io) {
     return <Dropzone onFile={handleFile} error={error} />;
   }
 
@@ -66,6 +74,7 @@ export default function App() {
       doc={doc}
       fileName={fileName}
       defaults={defaults}
+      io={io}
       onClose={handleClose}
     />
   );
@@ -75,6 +84,7 @@ interface ScoreProps {
   doc: Document;
   fileName: string;
   defaults: DefaultsApplied;
+  io: ScoreIO;
   onClose: () => void;
 }
 
@@ -90,7 +100,7 @@ function defaultsMessage(d: DefaultsApplied): string {
 }
 
 /** Loaded-score view: header summary + scaled score canvas + playback transport. */
-function Score({ doc, fileName, defaults, onClose }: ScoreProps) {
+function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
   // The command layer (M3). `revision` bumps on every edit; thread it into
   // anything derived from the (in-place-mutated) DOM so it refreshes. The
   // Toolbar (M4) is the first UI to dispatch real edits.
@@ -139,6 +149,16 @@ function Score({ doc, fileName, defaults, onClose }: ScoreProps) {
     },
     [dispatch],
   );
+
+  // Download (M7): serialize the live DOM (commands mutate it in place, so this
+  // captures every edit) and save through the IO seam (PRD §7.5). `serializeXml`
+  // re-emits the captured declaration/DOCTYPE and unedited regions stay
+  // byte-identical to the load baseline (Invariant #2). No success toast in M7 —
+  // deferred to M9 (ui-decisions A4). Print is browser-native via `@media print`.
+  const handleDownload = useCallback(() => {
+    void io.save(serializeXml(doc));
+  }, [io, doc]);
+  const handlePrint = useCallback(() => window.print(), []);
 
   // Bar selection (M5) — ephemeral *view* state, not a Command (Invariant #3
   // governs DOM mutations; selection touches neither the DOM nor undo/redo).
@@ -202,6 +222,8 @@ function Score({ doc, fileName, defaults, onClose }: ScoreProps) {
         canRedo={canRedo}
         onUndo={undo}
         onRedo={redo}
+        onDownload={handleDownload}
+        onPrint={handlePrint}
         onClose={onClose}
       />
       <Toolbar
