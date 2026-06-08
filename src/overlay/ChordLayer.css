@@ -46,6 +46,16 @@
   background: var(--accent-tint);
 }
 
+/* Accidental glyphs (♯ ♭ 𝄪) — the engraving font sets them wide and full-size,
+   so "E♭mi" reads as "E ♭ mi". Render them a touch smaller, slightly raised,
+   and pulled in (the conventional chord-symbol accidental) so the symbol reads
+   as one unit. */
+.chord-pill__acc {
+  font-size: 0.78em;
+  margin: 0 -0.07em;
+  vertical-align: 0.08em;
+}
+
 /* Suppress editing affordances while playing: pills stay visible (display-only)
    so the chart still reads, but clicks pass through to the seek overlay. */
 .chord-layer.is-playing .chord-pill {

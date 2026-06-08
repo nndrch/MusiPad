@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, type RefObject } from 'react';
+import { memo, useMemo, useState, type ReactNode, type RefObject } from 'react';
 import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import { Plus } from 'lucide-react';
 import {
@@ -121,7 +121,7 @@ export const ChordLayer = memo(function ChordLayer({
                 data-measure={a.measureIndex}
                 data-entry={a.entryIndex}
                 className={`chord-pill${isEditingAt(a) ? ' is-active' : ''}`}
-                style={{ left: a.x, top: a.staffTopY }}
+                style={{ left: a.x, top: a.chordRowY }}
                 onClick={(e) => {
                   e.stopPropagation();
                   setEditor({
@@ -132,7 +132,7 @@ export const ChordLayer = memo(function ChordLayer({
                   });
                 }}
               >
-                {chord.text}
+                {renderSymbol(chord.text)}
               </button>
             );
           }
@@ -147,9 +147,9 @@ export const ChordLayer = memo(function ChordLayer({
               data-entry={a.entryIndex}
               style={{
                 left: a.x - SLOT_W / 2,
-                top: a.staffTopY,
+                top: a.chordRowY,
                 width: SLOT_W,
-                height: a.staffHeight,
+                height: Math.max(a.slotBottomY - a.chordRowY, 0),
               }}
             >
               <button
@@ -202,4 +202,33 @@ export const ChordLayer = memo(function ChordLayer({
 function rectOf(el: HTMLElement): AnchorRect {
   const r = el.getBoundingClientRect();
   return { left: r.left, top: r.top, bottom: r.bottom, width: r.width };
+}
+
+const ACCIDENTALS = new Set(['♯', '♭', '𝄪']);
+
+/**
+ * Render a chord symbol, wrapping accidental glyphs (♯ ♭ 𝄪) so CSS can tighten
+ * their wide side-bearings in the engraving font — otherwise "E♭mi" reads as
+ * "E ♭ mi". Split by code point so the double-sharp surrogate pair stays whole.
+ */
+function renderSymbol(text: string) {
+  const parts: ReactNode[] = [];
+  let buf = '';
+  Array.from(text).forEach((ch, i) => {
+    if (ACCIDENTALS.has(ch)) {
+      if (buf) {
+        parts.push(buf);
+        buf = '';
+      }
+      parts.push(
+        <span key={i} className="chord-pill__acc">
+          {ch}
+        </span>,
+      );
+    } else {
+      buf += ch;
+    }
+  });
+  if (buf) parts.push(buf);
+  return parts;
 }
