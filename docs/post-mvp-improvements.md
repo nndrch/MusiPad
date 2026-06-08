@@ -80,7 +80,19 @@ True client-side **PDF export in A4 format** — a downloadable, paginated PDF o
 - OSMD renders **SVG**: rasterize/convert the SVG to PDF client-side (e.g. `svg2pdf.js` + `jsPDF`) at A4 dimensions — no backend.
 - The fixed-`NATURAL_WIDTH` scaled-page model ([`useOsmd.ts`](../src/render/useOsmd.ts)/[`OsmdView.tsx`](../src/render/OsmdView.tsx)) should map cleanly onto A4 width; OSMD also has `PageFormat`/page-layout options worth evaluating.
 
-**Why deferred:** The MVP's output of record is the corrected `.musicxml` (M7), and a quick Print covers paper output; a pixel-faithful A4 PDF generator (new deps, pagination) is a heavier convenience layered on top.
+**Paginated rendering — the shared foundation (scoped during M7, 2026-06-08):**
+
+M7's Print is a CSS-only `@media print` that fits the single continuous OSMD SVG to the page width ([`src/print.css`](../src/print.css)). Because OSMD renders the whole score as **one tall SVG** (Endless page format — required for the on-screen zoom-to-fit + the overlay projection), the browser **slices it at page boundaries**, cutting through any system that straddles a sheet. CSS can't prevent this (`break-inside: avoid` is ignored for content taller than a page; you can't break "between systems" inside one SVG). So **M7 Print is clean only for charts that fit one page; longer charts clip across sheets** — a known, accepted MVP limitation. The proper fix is the same paginated re-render A4 PDF needs:
+
+- A **hidden, off-screen** second OSMD instance — positioned off-screen, **not** `display:none` (VexFlow can't measure text metrics in `display:none`).
+- Rendered with **`pageFormat: 'A4_P'`** (`setOptions`/`setPageFormat`) so OSMD lays the score onto A4 pages and **only breaks between systems** — no mid-system cuts; each MusicPage becomes its own `<svg>`.
+- **Chords inked by OSMD**: the screen paints OSMD's chord glyphs transparent (`DefaultColorChordSymbol`) and overlays HTML pills, but the print pages have no overlay — so leave the glyphs inked and **normalize each `<harmony>`'s `kind/@text` to the Berklee house style** (`qualityLabel`, [`model/chordSymbol`](../src/model/chordSymbol.ts)) on the print **clone** so symbols match the on-screen pills. Reuse `buildRenderDoc`'s feel-words strip.
+- Print CSS: `@page { size: A4; margin: … }`, show the print container, give each page `<svg>` `max-width: 100%; height: auto; break-after: page;` (modern browsers infer the SVG aspect ratio from its width/height attributes, so it scales without a `viewBox`).
+- Trigger via an **async Print handler**: `await printView.prepare()` (load + render the clone) **then** `window.print()` — OSMD's async load can't be awaited inside a synchronous `beforeprint`, so the button path must render first.
+- Title/subline header: either let OSMD draw the title (`drawTitle: true`) or render a first-page HTML band scaled to leave room (an A4-sized page SVG + an HTML header on the same sheet overflow — needs tuning).
+- For PDF: feed the same paginated SVGs to `svg2pdf.js` + `jsPDF` at A4 dimensions.
+
+**Why deferred:** The MVP's output of record is the corrected `.musicxml` (M7), and a quick Print covers paper output; a pixel-faithful A4 PDF generator (new deps, pagination) is a heavier convenience layered on top. The paginated re-render above is the shared core for both the PDF generator and a clip-free Print.
 
 ---
 
