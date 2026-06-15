@@ -26,6 +26,10 @@ function buildKeyOptions(mode: 'major' | 'minor'): KeyOption[] {
 const MAJOR_KEYS = buildKeyOptions('major');
 const MINOR_KEYS = buildKeyOptions('minor');
 
+/** Meter options (B8.2): common numerators and denominators for lead sheets. */
+const METER_BEATS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const METER_BEAT_TYPES = [2, 4, 8, 16];
+
 interface ToolbarProps {
   info: ScoreInfo;
   /** Relabel the key signature (no pitch change). */
@@ -34,6 +38,8 @@ interface ToolbarProps {
   onTranspose: (semitones: number) => void;
   /** Set the initial tempo (BPM); drives playback. */
   onSetTempo: (bpm: number) => void;
+  /** Set the chart's time signature (beats / beat-type); reflows the slash grid. */
+  onSetMeter: (beats: number, beatType: number) => void;
   /** Add (or relabel) a section mark at the target bar (M7). */
   onAddSection: (label: string) => void;
   /** Add an empty annotation at the target bar, then open its inline editor (M7). */
@@ -51,11 +57,13 @@ export function Toolbar({
   onSetKey,
   onTranspose,
   onSetTempo,
+  onSetMeter,
   onAddSection,
   onAddAnnotation,
 }: ToolbarProps) {
   const keyId = useId();
   const tempoId = useId();
+  const meterId = useId();
 
   // Current key as the select's value. If the chart's mode isn't major/minor
   // (a church mode) or there's no key, the value won't match a listed option —
@@ -90,6 +98,26 @@ export function Toolbar({
     } else {
       // Reject out-of-range / non-numeric: snap back to the live value.
       setTempoText(liveTempoText);
+    }
+  }
+
+  // Meter (M8). The two selects are controlled by the live DOM reading (like
+  // Key); an unlisted current value is surfaced as a leading option so it shows.
+  const beatsListed =
+    info.meterBeats != null && METER_BEATS.includes(info.meterBeats);
+  const typeListed =
+    info.meterBeatType != null && METER_BEAT_TYPES.includes(info.meterBeatType);
+
+  function handleBeatsChange(value: string) {
+    const beats = Number.parseInt(value, 10);
+    if (!Number.isNaN(beats) && beats !== info.meterBeats) {
+      onSetMeter(beats, info.meterBeatType ?? 4);
+    }
+  }
+  function handleBeatTypeChange(value: string) {
+    const beatType = Number.parseInt(value, 10);
+    if (!Number.isNaN(beatType) && beatType !== info.meterBeatType) {
+      onSetMeter(info.meterBeats ?? 4, beatType);
     }
   }
 
@@ -180,6 +208,66 @@ export function Toolbar({
           }}
         />
         <span className="toolbar__unit">BPM</span>
+      </div>
+
+      <div className="toolbar__divider" />
+
+      <div className="toolbar__group">
+        <label className="toolbar__label" htmlFor={meterId}>
+          Meter
+        </label>
+        <div className="toolbar__meter">
+          <select
+            id={meterId}
+            className="toolbar__select toolbar__meter-select"
+            value={info.meterBeats ?? ''}
+            disabled={!info.hasMeter}
+            title={
+              info.hasMeter ? 'Beats per bar' : 'This score has no time signature'
+            }
+            aria-label="Beats per bar"
+            onChange={(e) => handleBeatsChange(e.target.value)}
+          >
+            {info.meterBeats == null && (
+              <option value="" disabled>
+                —
+              </option>
+            )}
+            {!beatsListed && info.meterBeats != null && (
+              <option value={info.meterBeats}>{info.meterBeats}</option>
+            )}
+            {METER_BEATS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+          <span className="toolbar__meter-slash" aria-hidden="true">
+            /
+          </span>
+          <select
+            className="toolbar__select toolbar__meter-select"
+            value={info.meterBeatType ?? ''}
+            disabled={!info.hasMeter}
+            title="Beat unit"
+            aria-label="Beat unit"
+            onChange={(e) => handleBeatTypeChange(e.target.value)}
+          >
+            {info.meterBeatType == null && (
+              <option value="" disabled>
+                —
+              </option>
+            )}
+            {!typeListed && info.meterBeatType != null && (
+              <option value={info.meterBeatType}>{info.meterBeatType}</option>
+            )}
+            {METER_BEAT_TYPES.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="toolbar__divider" />
