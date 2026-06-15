@@ -12,6 +12,7 @@ import { useScoreEditor } from './store/useScoreEditor';
 import { setKeySignature } from './commands/key';
 import { transpose } from './commands/transpose';
 import { setTempo } from './commands/tempo';
+import { setMeter } from './commands/meter';
 import { removeChordAt, setChordAt } from './commands/chord';
 import {
   addSection,
@@ -313,6 +314,7 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         onSetKey={(fifths, mode) => dispatch(setKeySignature(fifths, mode))}
         onTranspose={(semitones) => dispatch(transpose(semitones))}
         onSetTempo={(bpm) => dispatch(setTempo(bpm))}
+        onSetMeter={(beats, beatType) => dispatch(setMeter(beats, beatType))}
         onAddSection={handleAddSection}
         onAddAnnotation={handleAddAnnotation}
       />

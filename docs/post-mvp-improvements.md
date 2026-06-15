@@ -237,3 +237,20 @@ M7 identifies MusiPad-authored free-text annotations by **content, not document 
 Whichever is chosen, update the `directions.ts` readers (`readChartAnnotations`, `isAnnotation`/`tagAnnotation`) so identification stays **content-based, not position-based**.
 
 **Why deferred:** Annotation identification works today and the file renders / round-trips correctly through OSMD and normal consumers; strict-XSD validation is not part of the MVP's load → edit → play → export loop. Captured so the non-schema attribute is a known, deliberate decision — not an accident. _(Recorded 2026-06-15 at M7 close-out.)_
+
+---
+
+## P14 — Mid-piece / multiple time-signature editing
+
+M8 edits the chart's **single governing meter** — the first `<time>`, like Key relabels the first key (PRD §8 "PoC may limit to the first/active meter… mid-piece `<time>` changes are a further wrinkle"). The [`setMeter`](../src/commands/meter.ts) command patches that one `<time>` and reflows every slash bar to it; the toolbar Meter control reads/writes that one value. This is correct for lead-sheet charts, which carry one meter throughout.
+
+**The wrinkle (flagged by the human during M8):** a song with **more than one** time signature — e.g. a `4/4` verse into a `6/8` bridge, or a single inserted `5/4` bar — has no home in the current model. A second `<time>` would need to be **addressable per region/bar**, and the "set the whole chart's meter" affordance no longer fits.
+
+**Scope / ideas (if ever wanted) — this likely means rebuilding the meter edit, not extending it:**
+
+- Move from a **global toolbar control** to a **per-bar affordance** — the B8.1 "hover/click the staff time signature" idea we set aside for M8 — so each `<time>` is targeted where it sits.
+- A command that **inserts / edits / removes a `<time>` at a chosen bar** (add `<attributes><time>` to a measure that has none; remove one to let the prior meter carry forward), reflowing only the bars **governed by that meter region** (from this `<time>` to the next).
+- Decide reflow scope per region rather than whole-part; `schedule.ts` already tracks `beats`/`beat-type` as carry-forward state, so playback math is ready — the gap is purely authoring/addressing.
+- Pickup/anacrusis bars (`implicit="yes"`, already skipped by `setMeter`) interact with this.
+
+**Why deferred:** Out of the PRD's M8 scope by design (kept M8 to one focused, shippable meter edit). Charts from the pipeline are single-meter, so this has no MVP use; recorded so the single-meter assumption baked into M8 is a known, deliberate boundary — and so whoever revisits it knows it's a **rebuild of the affordance** (global → per-bar), not a small extension. _(Recorded 2026-06-15 during M8.)_

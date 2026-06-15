@@ -57,6 +57,22 @@
   cursor: default;
 }
 
+/* Meter beats / beat-type — two compact selects joined by a slash. */
+.toolbar__meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.toolbar__meter-select {
+  padding: 0 4px 0 6px;
+}
+
+.toolbar__meter-slash {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
 /* Transpose ± stepper — two joined quiet buttons. */
 .toolbar__stepper {
   display: inline-flex;
