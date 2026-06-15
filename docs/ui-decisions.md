@@ -19,7 +19,7 @@ Resolving these early de‑risks the rest, because the later items inherit from 
 2. ✅ **Selection + playing‑bar visual language** (M5) — **resolved**: selection = grayscale, playing = orange (distinguished by hue). Reused by chords/sections/annotations later. → see A2, B5.1, B5.4.
 3. ✅ **Popover spec** (M6) — **resolved** (M6a): screen-space body portal, anchored under the item, `--shadow-pop`, Esc / click-outside dismiss. → see A1.
 4. ✅ **Default chord‑symbol house style** (M6) — **resolved**: normalize to Berklee on edit (mi / Maj7 / ° / ø / + / sus / `C/E`). → see B6.8.
-5. ⚑ **Primary button + toast** (M7) — the app's first "loud" moments (Download). → see A.
+5. ✅ **Primary button + toast** (M7) — **resolved** (2026-06-08): Download = the app's single orange primary (A6) + neutral Print; the toast (A4) is **deferred to M9** (Download ships silently in M7). → see A3–A7, B7.5/B7.6.
 
 ---
 
@@ -38,38 +38,38 @@ Anchoring/positioning over the scaled SVG sheet, `--shadow-pop`, max size, dismi
 Two-level model (MuseScore-style), refined during the M5 build:
 
 - **Bar level (M5):** selecting a bar draws a **warm-gray border + a light warm-gray fill** — two alphas of one warm gray (`rgba(120,119,116, .5)` border / `.1` fill), **never** the accent (reserved for playback). Bars show **no** idle hover affordance; the hover cue belongs to individual items. The playing bar is an **orange** wash (`rgba(232,89,12,.16)`); hue, not shape, separates selection from playback. Fills are translucent so notes stay legible.
-- **Item level (M6/M7):** hovering an individual **item** (note, chord, or section/annotation) highlights **just that item in 100% accent**; selecting a bar also **highlights all items inside it**. Needs per-item projection that arrives with M6 (chords interactive) and M7 (sections/annotations exist) — see B6/B7. Notes get per-item targets when M6 builds the beat-anchor affordances.
+- **Item level (M6/M7):** hovering an individual **item** (note, chord, or section/annotation) highlights **just that item in 100% accent**; selecting a bar also **highlights all items inside it**. Needs per-item projection that arrives with M6 (chords interactive) and M7 (sections/annotations exist) — see B6/B7. **Delivered for chords (M6) and sections/annotations (M7, `overlay/MarkLayer.tsx`).** The only remaining unbuilt item-level piece is **note**-level per-item targets, now deferred with note editing (slash toggle P11, respell P12).
 - **Decision:** As above. _(Supersedes both PRD §6.4's original accent-outline selection — §6.4 updated — and the initial M5 "grayscale fill only / faint gray hover" call, replaced after reviewing MuseScore's model.)_
 
-### A3. Context menu (right‑click) — _first needed: M7_ 🔲
+### A3. Context menu (right‑click) — _first needed: post-MVP (P12)_ ⊘
 
-Used for "Respell" (note M7) and possibly section/annotation remove. Trigger, look, item style, keyboard.
+Used for "Respell" (note) and possibly section/annotation remove. Trigger, look, item style, keyboard.
 
-- **Decision:** _TBD — now **first needed in M7** (note respell, B7.4)._ It was slated for M6b chord-root respell, but M6b was **dropped from the MVP** (2026-06-08) — see the decision log; chord respell never shipped, so the context-menu primitive is unbuilt until M7.
+- **Decision (deferred → P12):** No longer needed in M7 — its only M7 consumer, note respell (B7.4), moved to **P12**, and M7 section/annotation **remove uses ⌫ / a × affordance**, not a right-click menu. Design when built: **Body-portal `ContextMenu` at the pointer** (`position: fixed`, viewport-clamped), `--shadow-pop` surface matching `ChordEditor`; **arrow-key + Enter** navigation, **Esc / outside-pointerdown** dismiss via a `data-*` tag (the proven ChordEditor pattern); suppress the **native** menu only over the target item. _(Scoped 2026-06-08; deferred with respell same day.)_
 
-### A4. Toast — _first needed: M7_ 🔲
+### A4. Toast — _first needed: M7_ ✅
 
 Quiet, bottom‑left (PRD §6.4). Position, duration, stacking, dismiss, success vs error variants. Used for Download + parse errors; polished in M9.
 
-- **Decision:** _TBD_
+- **Decision:** **Deferred to M9.** Download ships in M7 **without** a success toast (the existing `Banner` keeps handling parse/load errors); the floating toast system is built and polished in M9 (B9.4). _(Settled 2026-06-08 — keep the first M7 PR lean; the toast is pure polish.)_
 
-### A5. Inline text edit — _first needed: M7_ 🔲
+### A5. Inline text edit — _first needed: M7_ ✅
 
 Rename a section pill, edit an annotation. Click‑to‑edit vs popover; commit/cancel keys.
 
-- **Decision:** _TBD_
+- **Decision:** **Click-to-edit in place** — the pill/annotation becomes an inline `<input>` (autofocus + select); **Enter** commits the rename/edit command, **Esc** cancels, **blur** commits. Reuses `ChordEditor`'s focus/dismiss conventions; lighter than another popover for a single short label. Drives section rename (B7.2) + annotation edit (B7.3). _(Settled 2026-06-08 — M7 decisions.)_
 
-### A6. Primary (orange) button — _first needed: M7_ 🔲
+### A6. Primary (orange) button — _first needed: M7_ ✅
 
 Download is the _only_ orange primary button (PRD §6.1/§6.2). Defines the primary‑button style; Print sits beside it as secondary.
 
-- **Decision:** _TBD_
+- **Decision:** **Orange-filled Download** (`--accent` / `--accent-hover`, lucide Download icon + "Download" label, matching `.topbar__btn` height/padding) as the app's **single** orange accent; **neutral secondary Print** beside it (`.topbar__btn`, Printer icon + "Print"), grayscale. Extends existing Topbar classes; no new shadow. _(Settled 2026-06-08 — M7 decisions.)_
 
-### A7. Overlay drag interaction — _first needed: M7_ 🔲
+### A7. Overlay drag interaction — _first needed: M7_ ✅
 
 Drag‑handle affordance, snap‑to‑barline indicator while dragging, drop feedback. Re‑projected from logical anchors on resize (Invariant #4).
 
-- **Decision:** _TBD_
+- **Decision:** **Drag the pill directly** (no separate handle); **highlight the nearest target measure** while dragging; **snap to `measureIndex`** on drop and dispatch a `Move` command. Measure-granularity matches "drops at start of nearest bar"; beat-level is unnecessary for sections/annotations. Re-projects from `{measureIndex}` every render (Invariant #4) — pixels never persisted. _(Settled 2026-06-08 — M7 decisions.)_
 
 ---
 
@@ -121,22 +121,22 @@ These build on M5's beat-anchor scaffold (now refined to real note graphics — 
   - **Chord audition (play):** **resolved** — click = edit (not play), so audition lives **in the editor**: a **▷ Hear** button auditions the current chord, and **applying Add/Update / clicking a list option auto-auditions** the result. Same voicing path as playback (`voicingFromSpec` → `Player.previewChord` → `Synth.playChord`).
   - **Decision:** As above (M6a); section/annotation item hover is B7.7 (M7).
 
-### M7 — Slashes, Sections, Annotations, Download + Print
+### M7 — Sections, Annotations, Download + Print
 
-- **B7.1 Slashes control** — toolbar toggle acting on the _selected_ bar (depends on M5 selection); enabled/disabled logic + on/off state reflecting the current bar. 🔲
-  - **Decision:** _TBD_
-- **B7.2 Section pills** — `＋Section` button placement; preset label menu (Intro/Verse/Chorus/Bridge/Solo/Outro/custom) + custom entry; boxed/enclosure styling (rehearsal convention); rename UI; remove affordance. 🔲
-  - **Decision:** _TBD_
-- **B7.3 Annotations** — `＋Note` button; plain sticky styling (no box, contrasting sections); edit‑text + remove; how it differs visually from a section. 🔲
-  - **Decision:** _TBD_
-- **B7.4 Note respell** — right‑click note → "Respell" (context menu, A3). 🔲
-  - **Decision:** _TBD_
-- ⚑ **B7.5 Download** — placement (topbar right), the single orange primary (A6), downloaded filename convention, success toast (A4). 🔲
-  - **Decision:** _TBD_
-- **B7.6 Print** — placement beside Download (secondary); **what prints** (`@media print`, score only — hide topbar/toolbar/transport/cursor/overlays); does the **title/subline header** print? (the _embedded_ subline is post‑MVP P4). 🔲
-  - **Decision:** _TBD_
-- **B7.7 Section/annotation item hover → accent** _(carried over from the M5 hover/selection pass)_ — hovering a section pill or annotation highlights it in **100% accent** (A2 item level); they become hoverable items once they're HTML overlays here. 🔲
-  - **Decision:** _TBD_
+- **B7.1 Slashes control** — ⊘ **EXTRACTED to post-MVP P11** (2026-06-08) — built on `post-mvp/slash-toggle`, then pulled from the MVP (slashes already come from the pipeline; full value needs note editing, P9/P10). Design preserved below + in P11.
+  - **Decision (deferred → P11):** A **toolbar toggle** acting on the **selected** bar (disabled with no selection; active = accent). State read: **"on" when ALL sounding notes** carry `<notehead>slash</notehead>`; toggling sets every sounding note on (skipping rests + `<chord/>` members), or removes them when fully on. **Per-bar** (not per-note), matching the PRD wording + selection model. Mechanism locked by spike **S1**: per-note `<notehead>slash</notehead>` **only** — never `attributes/measure-style/slash` (OSMD ignores it; `slashes.musicxml` is the negative control). _(Settled 2026-06-08.)_
+- **B7.2 Section pills** — `＋Section` button placement; preset label menu (Intro/Verse/Chorus/Bridge/Solo/Outro/custom) + custom entry; boxed/enclosure styling (rehearsal convention); rename UI; remove affordance. ✅
+  - **Decision:** **`＋Section`** in the Toolbar opens a small **preset menu** (Intro / Verse / Chorus / Bridge / Solo / Outro + "Custom…" → inline text); drops a **boxed** (rehearsal square-enclosure) pill at the selected bar, else the **first bar with no section** (auto first-empty, so a toolbar add never overwrites; no-op if all bars have one and nothing is selected). **Rename** via A5 inline edit on click; **remove** via ⌫ when selected or a × affordance (A3 right-click was deferred with respell → P12). DOM: `<direction placement="above"><direction-type><rehearsal enclosure="square">LABEL</rehearsal></direction-type></direction>` (reuse `tempo.ts` `wrapDirection()` + its child-order rule). _(Settled 2026-06-08; **shipped in M7**.)_
+- **B7.3 Annotations** — `＋Note` button; plain sticky styling (no box, contrasting sections); edit‑text + remove; how it differs visually from a section. ✅
+  - **Decision:** **`＋Note`** in the Toolbar beside ＋Section; renders annotations as **plain un-boxed text** (no border/fill) so "box = structural section, plain text = annotation" is the visual contract (§6/§10). Same auto first-empty targeting as ＋Section, then auto-opens the inline editor. **A5** inline edit on click; **⌫ / ×** remove. Mirrors the section command/overlay pattern with `<words>` (tagged `data-musipad="annotation"`) instead of `<rehearsal>`. _(Settled 2026-06-08; **shipped in M7**.)_
+- **B7.4 Note respell** — right‑click note → "Respell" (context menu, A3). ⊘ **DEFERRED to post-MVP P12** (2026-06-08) — moot on the chart's placeholder slash notes; lands with note editing (P9/P10). Design preserved below + in P12.
+  - **Decision (deferred → P12):** **Right-click → A3 context menu** as the only entry point; offers the **single enharmonic alternative** for that note's sounding pitch (e.g. F♯ ↔ G♭), via `transpose.ts` spelling tables (rewrites `<step>`+`<alter>`, octave preserved, a natural's `<alter>` removed). A fuller picker stays post-MVP. **`<accidental>` policy:** the chart's slash placeholders carry no engraved `<accidental>`; if a real pitched note has one, the respell updates/removes it (minimal `<accidental>` writer) so glyph matches pitch. _(Settled 2026-06-08.)_
+- ⚑ **B7.5 Download** — placement (topbar right), the single orange primary (A6), downloaded filename convention, success toast (A4). ✅
+  - **Decision:** **Orange primary Download** at the far right of the Topbar (A6) → `ScoreIO.save(serializeXml(doc))`; filename **`<base>.musicxml`** (existing `LocalFileIO.downloadName`; browser handles collisions), plain `.musicxml` even when the source was `.mxl`. **No success toast in M7** (A4 deferred to M9); parse/load errors keep the existing Banner. App must retain the loaded filename / `ScoreIO` so `save()` names the file correctly (today the `io` is discarded after load). _(Settled 2026-06-08.)_
+- **B7.6 Print** — placement beside Download (secondary); **what prints** (`@media print`, score only — hide topbar/toolbar/transport/cursor/overlays); does the **title/subline header** print? (the _embedded_ subline is post‑MVP P4). ✅
+  - **Decision (MVP, built):** **Neutral secondary Print** beside Download → `window.print()`, backed by one `@media print` block ([`src/print.css`](../src/print.css)). Hides all chrome (`.topbar`/`.toolbar`/`.banner`/`.transport`/`.overlay-layer`/`.chord-slot`/`.chord-add`/`.chord-editor`/`.osmd-status`), prints the full `.score-header` (title + Key·Tempo subline) + the score + `.chord-pill` ink (black), and re-fits the fixed 1200px score to A4 with **`zoom`** (≈0.58, tunable via `--print-zoom`; `zoom` scales the layout box so heights reserve and pills stay aligned, unlike `transform`). **Known limitation:** OSMD is one continuous SVG, so charts taller than a page **clip across sheets** — clean for single-page charts only. A clip-free **paginated re-render** (off-screen OSMD at `A4_P`, inked Berklee chords) was scoped but **deferred to post-MVP P4** (it's the A4-PDF foundation), not the MVP. _(Settled 2026-06-08; pagination deferred same day.)_
+- **B7.7 Section/annotation item hover → accent** _(carried over from the M5 hover/selection pass)_ — hovering a section pill or annotation highlights it in **100% accent** (A2 item level); they become hoverable items once they're HTML overlays here. ✅
+  - **Decision:** Hovering a section pill or annotation highlights it in **100% accent** (A2 item level), once they're HTML overlays here; selecting their bar highlights them too. Reuses the M6 `.chord-pill` hover pattern. _(Settled 2026-06-08.)_
 
 ### M8 — Meter / time-signature editing
 
@@ -179,6 +179,10 @@ UI decisions that live in [`post-mvp-improvements.md`](./post-mvp-improvements.m
 
 Record resolved decisions here (date — item — outcome), so the rationale survives.
 
+- **2026-06-15 — M7 Sections + Annotations shipped (A5, A7, B7.2, B7.3, B7.7)** — Built the chart-authoring half of M7 on top of the earlier Download + Print. Both marks are standard MusicXML `<direction placement="above">` (Section = `<rehearsal enclosure="square">`, Annotation = `<words>` tagged `data-musipad="annotation"`), one of each per measure keyed by `measureIndex`, rendered as HTML overlays by a single generic `overlay/MarkLayer.tsx` (mounted twice) and **stripped from the OSMD render clone** so OSMD doesn't double-draw them. Three taste calls made live: (1) **auto first-empty-bar targeting** — a toolbar add lands on the selected bar, else the first bar with no mark of that kind, so it never overwrites (human picked this over "require a selection"); (2) **stackable, not slotted** marks — a lone mark sits in the base row above the chords, only a bar with both stacks them (annotation base, section one row up), so a lone section no longer floats over an empty slot; (3) **opened-up OSMD spacing** (`MinimumDistanceBetweenSystems`/`MinSkyBottomDistBetweenSystems`/`PageTopMargin`/`ChordSymbolYPadding`) so marks clear the staff. **Recorded trade-off → P13:** `data-musipad` is a non-schema attribute the W3C XSD doesn't define, so strict validation could reject a download; accepted for position-independent annotation identification (protects the Feel chip = first untagged `<words>` in measure 1). _Verified: lint/build clean; full live QA pass (human "all pass")._
+- **2026-06-08 — M7 re-scoped to Sections + Annotations (B7.1, B7.4, A3)** — On review the two **note-level** M7 items were pulled from the MVP: the per-bar **slash toggle** (B7.1) was built then **extracted to post-MVP P11** (branch `post-mvp/slash-toggle`), and **note respell** (B7.4) + the **A3** context menu were **deferred to P12**. Both are moot until note editing (P9/P10) — our chart notes are un-played slash placeholders, and slashes already come from the pipeline. M7 now ships **Download + Print** (done) + **Sections + Annotations** — all real chart authoring, none note-dependent. Section/annotation **remove** therefore uses ⌫/× (not A3). _Rationale (human, 2026-06-08): the slash toggle's MVP purpose wasn't clear — "keep the development… but extract it and keep as a post mvp" — and respell has the same moot-on-placeholders issue._
+- **2026-06-08 — M7 Print pagination DEFERRED to P4 (B7.6)** — The built MVP Print is a CSS-only `@media print` that zoom-fits OSMD's single continuous SVG to A4 width; on charts taller than a page it **clips across sheets** (you can't break "between systems" inside one SVG, and `break-inside: avoid` is ignored for over-a-page content). A clip-free **paginated print re-render** (a hidden off-screen OSMD at `A4_P` page format, chords inked + Berklee-normalized on a clone, async `prepare()`→`window.print()`) was scoped and chosen, then **pulled** on review as **not MVP-relevant** — it's the same paginated-render core as P4's A4-PDF export, so the full design is parked in **P4**. MVP Print stays single-page-clean; the long-chart clip is an accepted limitation. _Rationale (human, 2026-06-08): "plan this instead of building it now; it's not relevant for the MVP."_
+- **2026-06-08 — M7 UI decisions settled (A3–A7, B7.1–B7.7)** — Closing the gate before building M7 ("Slashes, Sections, Annotations, Download + Print"), informed by the `m7-scope` survey workflow. **Primitives:** A3 context menu = body-portal at pointer (ChordEditor dismiss pattern, keyboard-nav); A4 toast = **deferred to M9** (Download ships silently in M7, Banner keeps errors); A5 = click-to-edit-in-place (Enter/Esc/blur); A6 = orange Download (the app's only orange) + neutral Print; A7 = drag the pill, snap to nearest `measureIndex`. **M7 items:** B7.1 per-bar slash toggle on the selected bar, "on" = all sounding notes slashed, per-note `<notehead>slash</notehead>` only (spike S1); B7.2 ＋Section preset menu → boxed `rehearsal` direction; B7.3 ＋Note → un-boxed `words`; B7.4 right-click respell offering the single enharmonic flip via `transpose.ts`; B7.5 `<base>.musicxml` download via `ScoreIO.save`; B7.6 Print prints the full `.score-header` + score, hides chrome, resets `.osmd-scale`; B7.7 item hover → 100% accent. **Build order:** Download+Print → slash toggle → respell+A3 → sections → annotations (one PR for the milestone). _Rationale:_ four taste/scope calls (print header, toast-defer, filename, slash state) made by the human; the rest adopted from the survey's architect recommendations, all reusing proven M5/M6 patterns (Command snapshot-inverse, `editElement`, ChordEditor popover, projector anchors) to honor the Core Invariants. **Open implementation notes:** MoveSection/MoveAnnotation widen their locate to the primary `<part>` (two-measure snapshot, like `transpose.ts`); `readStyle`/`buildRenderDoc` must target only the *first* measure-1 `<words>` so user annotations there aren't stripped/mistaken for the Feel chip.
 - **2026-06-08 — M6b structured picker + respell DROPPED from the MVP (B6.4/5/6/7/11, A3)** — The planned M6b builder (root letter+accidental selector, grouped quality buttons, collapsible `/ bass`, in-editor enharmonic **respell**) was implemented and verified (24/24 headless) on `feat/m6b-chord-picker`, then **rejected on review**: _"The complexity introduced does not make sense to an MVP… keep it simple as a dropdown with a list of chords."_ The work was **discarded uncommitted** (never merged); the editor stays the M6a **editable combobox** (field + dropdown of the root's qualities). B6.5/6.6/6.7/6.11 are marked **⊘ dropped**; the ideas are parked in post-MVP **P8**. **Consequence:** M6 is **complete on the dropdown** (PRD §9 M6 AC already met by M6a), and A3's right-click context-menu primitive is now **first needed in M7** (note respell, B7.4). _Rationale:_ the typed field already covers every spelling/quality/slash a user needs; the structured grid added surface area and maintenance without expanding what the MVP can express.
 - **2026-06-07 — M5 visual language (A2, B5.1, B5.4, B5.5)** — Selection and playback are told apart by **hue** (accent reserved for playback per §6.1), never by shape. The full-bar orange wash **replaces** M2's thin-line cursor (OSMD's default cursor disabled via a no-op `CursorController`). Folded into PRD §6.4. _Rationale:_ proposed three shape-based schemes; the human chose the simpler hue split — orange = playing, gray = selecting.
 - **2026-06-07 — M5 selection revised to MuseScore model (A2, B5.1, B5.2, B5.8)** — After the first build, the human refined it against MuseScore: selected bar = **warm-gray border + light warm-gray fill** (two alphas of one warm gray), **no idle bar hover**, and **click-a-bar-to-seek while playing** (with a light-orange playing-mode hover preview). Item-level hover/highlight (notes/chords/sections → 100% accent; highlight all items in a selected bar) and **chord click-to-play** were defined as the model but **deferred to M6/M7** (need per-item projection) — recorded in B6.12 / B7.7.

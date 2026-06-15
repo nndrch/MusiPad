@@ -125,3 +125,86 @@
   color: var(--text-faint);
   font-size: 11px;
 }
+
+/* ＋Section / ＋Note authoring controls (M7). */
+.toolbar__marks {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+}
+
+.toolbar__btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.toolbar__btn:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 1px;
+}
+
+/* Preset dropdown — anchored under ＋Section, dismiss on outside click / Esc. */
+.toolbar__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 148px;
+  padding: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+}
+
+.toolbar__menu-item {
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.toolbar__menu-item:hover {
+  background: var(--surface-hover);
+}
+
+.toolbar__menu-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border);
+}
+
+.toolbar__menu-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  outline: none;
+}

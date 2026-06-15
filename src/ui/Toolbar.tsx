@@ -1,11 +1,14 @@
-import { useId, useState } from 'react';
-import { Minus, Plus } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { ChevronDown, Minus, Plus } from 'lucide-react';
 import { keyLabel, type ScoreInfo } from '../model/scoreInfo';
 import './Toolbar.css';
 
 // Tempo bounds for the input (quarter-notes/min). Generous but sane.
 const MIN_BPM = 20;
 const MAX_BPM = 400;
+
+/** Common section labels offered by the ＋Section menu (B7.2); "Custom…" adds the rest. */
+const SECTION_PRESETS = ['Intro', 'Verse', 'Chorus', 'Bridge', 'Solo', 'Outro'];
 
 interface KeyOption {
   value: string; // "fifths:mode"
@@ -31,14 +34,26 @@ interface ToolbarProps {
   onTranspose: (semitones: number) => void;
   /** Set the initial tempo (BPM); drives playback. */
   onSetTempo: (bpm: number) => void;
+  /** Add (or relabel) a section mark at the target bar (M7). */
+  onAddSection: (label: string) => void;
+  /** Add an empty annotation at the target bar, then open its inline editor (M7). */
+  onAddAnnotation: () => void;
 }
 
 /**
- * Global-edit toolbar (PRD §6.2, M4): Key relabel ▾, Transpose ±, Tempo input.
- * Quiet and inline per the design language (§6.1) — these are the only global
- * controls. Each control's change dispatches an undoable command via App.
+ * Global-edit toolbar (PRD §6.2, M4/M7): Key relabel ▾, Transpose ±, Tempo
+ * input, and the M7 ＋Section / ＋Note authoring controls. Quiet and inline per
+ * the design language (§6.1). Each control's change dispatches an undoable
+ * command via App.
  */
-export function Toolbar({ info, onSetKey, onTranspose, onSetTempo }: ToolbarProps) {
+export function Toolbar({
+  info,
+  onSetKey,
+  onTranspose,
+  onSetTempo,
+  onAddSection,
+  onAddAnnotation,
+}: ToolbarProps) {
   const keyId = useId();
   const tempoId = useId();
 
@@ -166,6 +181,136 @@ export function Toolbar({ info, onSetKey, onTranspose, onSetTempo }: ToolbarProp
         />
         <span className="toolbar__unit">BPM</span>
       </div>
+
+      <div className="toolbar__divider" />
+
+      <MarkControls
+        onAddSection={onAddSection}
+        onAddAnnotation={onAddAnnotation}
+      />
+    </div>
+  );
+}
+
+/**
+ * ＋Section (preset menu + Custom… inline) and ＋Note controls (M7, B7.2/B7.3).
+ * Both drop their mark on the target bar (App picks selected-else-first). The
+ * menu dismisses on outside-pointerdown / Esc, mirroring the ChordEditor
+ * convention; "Custom…" swaps the preset list for an inline label input.
+ */
+function MarkControls({
+  onAddSection,
+  onAddAnnotation,
+}: {
+  onAddSection: (label: string) => void;
+  onAddAnnotation: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [custom, setCustom] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const customRef = useRef<HTMLInputElement>(null);
+
+  function close() {
+    setOpen(false);
+    setCustom(false);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: PointerEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) close();
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        e.preventDefault();
+        close();
+      }
+    }
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (custom) customRef.current?.focus();
+  }, [custom]);
+
+  function pick(label: string) {
+    onAddSection(label);
+    close();
+  }
+
+  return (
+    <div className="toolbar__marks" ref={rootRef}>
+      <button
+        type="button"
+        className="toolbar__btn"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => {
+          setCustom(false);
+          setOpen((o) => !o);
+        }}
+      >
+        <Plus size={14} strokeWidth={2.2} />
+        Section
+        <ChevronDown size={13} strokeWidth={2} />
+      </button>
+      <button type="button" className="toolbar__btn" onClick={onAddAnnotation}>
+        <Plus size={14} strokeWidth={2.2} />
+        Note
+      </button>
+
+      {open && (
+        <div className="toolbar__menu" role="menu">
+          {!custom ? (
+            <>
+              {SECTION_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  role="menuitem"
+                  className="toolbar__menu-item"
+                  onClick={() => pick(preset)}
+                >
+                  {preset}
+                </button>
+              ))}
+              <div className="toolbar__menu-sep" />
+              <button
+                type="button"
+                role="menuitem"
+                className="toolbar__menu-item"
+                onClick={() => setCustom(true)}
+              >
+                Custom…
+              </button>
+            </>
+          ) : (
+            <input
+              ref={customRef}
+              className="toolbar__menu-input"
+              placeholder="Section label"
+              aria-label="Custom section label"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const value = e.currentTarget.value.trim();
+                  if (value) pick(value);
+                  else close();
+                } else if (e.key === 'Escape') {
+                  e.stopPropagation();
+                  close();
+                }
+              }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
