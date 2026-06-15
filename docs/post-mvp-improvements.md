@@ -1,6 +1,6 @@
 # Post-MVP improvements
 
-A parking lot for work to pick up **after** the PoC/MVP milestones (PRD §9, M0–M9) are complete. These are deliberately out of scope for the MVP — captured here so they aren't lost. Not prioritized; not committed to a milestone.
+A parking lot for work to pick up **after** the PoC/MVP milestones (PRD §9, M0–M11) are complete. These are deliberately out of scope for the MVP — captured here so they aren't lost. Not prioritized; not committed to a milestone.
 
 ---
 
@@ -69,6 +69,8 @@ Build on the M2 chord-chart playback engine ([`src/audio/`](../src/audio/)). The
 True client-side **PDF export in A4 format** — a downloadable, paginated PDF of the rendered chart, beyond what the browser's print dialog produces.
 
 > The simpler **Print** button (browser print via `@media print` CSS, score only) was **promoted to M7** alongside Download. This section now covers only the heavier PDF-generation half.
+>
+> **Update (M10, 2026-06-15):** the **paginated A4 page layout** and the **clip-free browser print** of it are now **promoted to M10** (PRD §6.6), built on the "paginated rendering" foundation below. P4 is now scoped to just the **downloadable A4 PDF** (svg2pdf.js + jsPDF) layered on top of M10's pages.
 
 **Scope / ideas:**
 
@@ -92,7 +94,7 @@ M7's Print is a CSS-only `@media print` that fits the single continuous OSMD SVG
 - Title/subline header: either let OSMD draw the title (`drawTitle: true`) or render a first-page HTML band scaled to leave room (an A4-sized page SVG + an HTML header on the same sheet overflow — needs tuning).
 - For PDF: feed the same paginated SVGs to `svg2pdf.js` + `jsPDF` at A4 dimensions.
 
-**Why deferred:** The MVP's output of record is the corrected `.musicxml` (M7), and a quick Print covers paper output; a pixel-faithful A4 PDF generator (new deps, pagination) is a heavier convenience layered on top. The paginated re-render above is the shared core for both the PDF generator and a clip-free Print.
+**Why deferred:** The MVP's output of record is the corrected `.musicxml` (M7), and a quick Print covers paper output; a pixel-faithful A4 PDF generator (new deps, pagination) is a heavier convenience layered on top. The paginated re-render above is the shared core for both the PDF generator and a clip-free Print. **(M10 builds that paginated re-render for the on-screen page view + clean Print; P4 then feeds the same paginated SVGs to svg2pdf/jsPDF for a downloadable file.)**
 
 ---
 
@@ -121,7 +123,7 @@ The score renders at a fixed `NATURAL_WIDTH` and scales proportionally to fit th
 - Below a width breakpoint, **break to ~2 bars per line** (vs the default ~4) so each bar is large enough to read on a phone/small tablet. Likely a responsive `RenderXMeasuresPerLineAkaSystem` (4 → 2) driven by a `ResizeObserver`/media query, re-laying-out (not just re-scaling) at that breakpoint — and re-projecting the M5 overlay afterward.
 - Consider touch-target sizing for bar selection / future chord targets at that scale.
 
-**Why deferred:** PRD §3 lists **"No mobile-first layout (desktop browser is the target)"** as a PoC non-goal. The zoom-to-fit model already keeps the chart usable when scaled; a true small-screen reading mode is a responsiveness enhancement on top of the working desktop layout. _(Requested 2026-06-07 during the M5 build.)_
+**Why deferred:** PRD §3 lists **"No mobile-first layout (desktop browser is the target)"** as a PoC non-goal. The zoom-to-fit model already keeps the chart usable when scaled; a true small-screen reading mode is a responsiveness enhancement on top of the working desktop layout. _(Requested 2026-06-07 during the M5 build.)_ _(Relates to **M10**'s view modes — a small-screen mode is a responsive variant of the **fullscreen (continuous)** view; §6.6.)_
 
 ---
 
@@ -151,13 +153,13 @@ Today only **chords** sound — the harmonic rhythm realized as block voicings (
 - **Click-to-audition a note** _(low-hanging)_ — click/select a notehead → hear that single pitch, mirroring the M6 chord audition. Nearly all the machinery already exists: a note is just a one-element chord, so [`previewChord([midi])`](../src/audio/player.ts) already sounds it; [`computeStaffEntries`](../src/overlay/projector.ts) already emits clickable per-notehead anchors and [`ChordLayer`](../src/overlay/ChordLayer.tsx) mounts hit-zones over them; [`nthSoundingNote`](../src/commands/chord.ts) resolves `(measureIndex, noteIndex) → <note>`; and [`voicing.ts`](../src/audio/voicing.ts) already has the step/octave/alter→MIDI conversion. The **only missing code** is a ~20-line `<note>` → MIDI reader plus one branch in the existing click handler. Estimate: ~half a day + QA. Caveat: a no-op on pure slash/`<unpitched>` placeholders — only meaningful for notes carrying a real `<pitch>`.
 - **Transport plays the melody line** _(larger)_ — sound the written note line alongside the chord regions during playback. This **reverses the documented chord-chart reading** (slashes keep time but don't articulate; placeholder pitches are never played), so it needs a **PRD decision** before any code, plus schedule/playback changes to emit and sound per-note pitch events.
 
-**Why deferred:** Beyond the MVP milestone scope (M0–M9) and the chord-chart premise the engine is built on. Captured so the (surprisingly small) audition path and the bigger melody-playback question aren't lost. Surfaced when the chord-preview-cutoff fix was being closed out.
+**Why deferred:** Beyond the MVP milestone scope (M0–M11) and the chord-chart premise the engine is built on. Captured so the (surprisingly small) audition path and the bigger melody-playback question aren't lost. Surfaced when the chord-preview-cutoff fix was being closed out.
 
 ---
 
 ## P10 — Evolve into a full lead-sheet editor (melody/note editing)
 
-> **This is an epic / north-star, not a single deferred refinement.** It changes the product's identity — from a **chord-chart corrector** (fix the chords over a fixed slash grid; PRD §3, §8) into a **lead-sheet authoring tool** where the user also writes and edits the **melody** itself. It therefore needs a **product-level decision and its own PRD track** (a milestone series beyond M0–M9), not just a slot in an existing milestone. P9 (note playback) is the first, smallest step on this path; this entry is the whole arc. _(Requested 2026-06-08.)_
+> **This is an epic / north-star, not a single deferred refinement.** It changes the product's identity — from a **chord-chart corrector** (fix the chords over a fixed slash grid; PRD §3, §8) into a **lead-sheet authoring tool** where the user also writes and edits the **melody** itself. It therefore needs a **product-level decision and its own PRD track** (a milestone series beyond M0–M11), not just a slot in an existing milestone. P9 (note playback) is the first, smallest step on this path; this entry is the whole arc. _(Requested 2026-06-08.)_
 
 A lead sheet is **melody (pitched notes + rhythm) + chord symbols (+ optionally lyrics)**. MusiPad already owns the chord-symbol half (M6) and renders/round-trips real notation; what's missing is **editing the notes**: their pitch, their rhythm, and adding/removing them.
 
@@ -198,7 +200,7 @@ The MVP's structural seams (Invariant #5) were built for exactly this kind of ex
 
 **Related:** **P9** (note playback — the first step), **P8** (enharmonic respell / `enharmonicAlternatives`, reused for pitch respell), **P7** (meter editing — shares the beat-math/`divisions` model the reflow engine needs), **P3** (instruments / play-along mute for a melody+chords mix), **P2** (lead-sheet conventions & road map).
 
-**Why deferred:** A deliberate expansion of the product's mission well beyond the PoC/MVP (M0–M9), which proves the chord-chart *correction* loop. Recorded here as the intended evolution path so the architecture decisions made for the MVP (DOM-as-truth, command layer, per-item overlay projection) are understood as the foundation this builds on — and so the hard part (rhythm reflow) is flagged before anyone assumes "it's just chord editing for notes."
+**Why deferred:** A deliberate expansion of the product's mission well beyond the PoC/MVP (M0–M11), which proves the chord-chart *correction* loop. Recorded here as the intended evolution path so the architecture decisions made for the MVP (DOM-as-truth, command layer, per-item overlay projection) are understood as the foundation this builds on — and so the hard part (rhythm reflow) is flagged before anyone assumes "it's just chord editing for notes."
 
 ---
 
@@ -211,6 +213,8 @@ A toolbar toggle that flips the **selected bar** between slash notation (`////`,
 - `commands/slashes.ts` — `setBarSlashes(measureIndex, on)` (measure-scoped, snapshot-inverse undo) toggling per-note `<notehead>slash</notehead>` (spike **S1**: OSMD ignores `measure-style/slash`; per-note notehead only), inserted in schema-valid position; durations/pitch/type untouched. Plus `barSlashState()` for the toggle's enabled/active reflection.
 - `ui/Toolbar` — a "Slashes" toggle acting on the selected bar (disabled with no selection, active=accent-tint).
 - `App/Score` — selected-bar slash state + toggle wiring (re-reads on each edit via `revision`).
+
+**Update (M9, 2026-06-15):** under the simplified chord-chart view (M9, PRD §6.5) **every bar renders as slashes by default** (in the render clone), so the per-bar _toggle_ is moot for the MVP. It re-emerges only once the written melody can be _displayed_ (note display, [[P10]]) — then the toggle chooses, per bar, between comping (slashes) and a written figure (notes).
 
 **Why deferred:** Slashes already come from the Basic Pitch pipeline, so the toggle is only a cleanup tool today; its real value — choosing per bar between *comp (slashes)* and a *written figure (notes)* — needs **note editing** ([[P10]] / P9). Cheap to revive: rebase the branch onto `main`.
 
@@ -254,3 +258,34 @@ M8 edits the chart's **single governing meter** — the first `<time>`, like Key
 - Pickup/anacrusis bars (`implicit="yes"`, already skipped by `setMeter`) interact with this.
 
 **Why deferred:** Out of the PRD's M8 scope by design (kept M8 to one focused, shippable meter edit). Charts from the pipeline are single-meter, so this has no MVP use; recorded so the single-meter assumption baked into M8 is a known, deliberate boundary — and so whoever revisits it knows it's a **rebuild of the affordance** (global → per-bar), not a small extension. _(Recorded 2026-06-15 during M8.)_
+
+---
+
+## P15 — Compound-meter felt-pulse slash grouping
+
+M9's simplified view (PRD §6.5) draws **N = the time signature's numerator** slashes per bar (4/4 → 4, 6/8 → 6, 7/8 → 7) — the simplest, literal mapping, **chosen for the MVP** (2026-06-15). Compound meters in real charts are usually felt in **dotted-beat pulses**, not raw eighth-note slashes.
+
+**Scope / idea:** group compound meters into felt pulses — 6/8 → 2, 9/8 → 3, 12/8 → 4 — so the slash grid matches how a player counts the bar; simple meters stay numerator-based. Needs a small meter→pulse table, renders the corresponding slash count/positions, and anchors chords to the pulses instead of raw beats.
+
+**Why deferred:** the numerator mapping is correct and readable for the common case (and exactly what the wireframe shows for 4/4); felt-pulse grouping is a musical nicety that adds branching and edge cases. Recorded as the deliberate alternative to the MVP choice. _(Recorded 2026-06-15 during the M9 scoping.)_
+
+---
+
+## P16 — Authoring: create a chart from scratch / add bars
+
+Today MusiPad is a **corrector**: it loads an existing MusicXML and **patches** it (PRD §1, §3 — no note entry/deletion, no structural creation; the empty state is an upload dropzone). The human asked (2026-06-15) how far we are from letting users **(a) add / insert / remove bars** in an existing chart and **(b) start a blank chart from scratch**.
+
+**How far — closer than it looks, and far cheaper than the lead-sheet editor ([[P10]]).** The chord-chart simplification (M9, §6.5) is the key enabler: a chord-chart **bar has no melody to author** — it is just _{meter-derived slash grid + chord symbols + optional section/annotation}_. So "add a bar" does **not** need the hard rhythm/pitch-entry + beat-budget reflow engine that the lead-sheet editor (P10) does. The existing seams already cover most of it:
+
+- **DOM-as-truth + command layer (Invariants #1/#3):** a new `AddMeasure` / `InsertMeasure` / `RemoveMeasure` is just another `Command` (clone a `<measure>` skeleton, renumber, splice) → undo/redo for free.
+- **Invariant #2 is trivial for new content:** a brand-new bar (or a blank document) has no load baseline to preserve, so "patch, don't regenerate" isn't stressed — unlike P10's in-bar reflow.
+- **Overlay + render clone already handle the rest:** the slash grid is render-clone-derived (M9), so a new bar needs no real notes — chord/section/meter editing, playback, and projection all already work per measure.
+
+**What's needed:**
+
+- **Add bars (existing chart):** `AddMeasure` / `InsertMeasure` / `RemoveMeasure` commands — clone a measure skeleton, set `@number`, handle `<attributes>` inheritance (divisions/time/key live on measure 1; new bars inherit) and the **final barline** moving to the new last bar; a toolbar / inline **＋Bar** affordance. ≈ a small milestone.
+- **From scratch (blank chart):** a minimal MusicXML **template** (one part, one measure, default divisions / C major / 4/4, a uniform slash grid) + an empty-state **"Start a blank chart"** entry beside the dropzone (a new `ScoreIO` "new" path, no upload) + light metadata entry (title / key / tempo — M4 already edits these). ≈ add-bars + template + empty-state.
+
+**Risks / decisions:** measure renumbering + `@number` integrity; correct `<attributes>` placement and inheritance; barline / road-map (repeats, P2) interaction when inserting mid-chart; whether `ScoreIO.load` grows a `createBlank()` sibling. Multi-part stays out (single-part assumption, §15).
+
+**Relation to [[P10]]:** explicitly **not** the lead-sheet / melody editor — no note pitch/rhythm authoring. This is **chord-chart-native authoring** (structure + chords only), the natural next capability once M9's slash model lands; P10 remains the separate, heavier melody-editing epic. _(Requested 2026-06-15.)_

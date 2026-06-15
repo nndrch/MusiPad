@@ -12,7 +12,7 @@ In-browser MusicXML revision tool. See [`docs/musicxml-editor-prd.md`](./docs/mu
 
 ## Build order
 
-Build milestones **M0 → M9** in order (PRD §9). Do not advance past failing acceptance criteria. One PR per milestone.
+Build milestones **M0 → M11** in order (PRD §9). Do not advance past failing acceptance criteria. One PR per milestone.
 
 ## Scripts
 
