@@ -3,7 +3,12 @@ import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import { LocalFileIO } from './io/LocalFileIO';
 import type { ScoreIO } from './io/ScoreIO';
 import { parseXml, serializeXml } from './model/xmlDoc';
-import { applyDefaults, type DefaultsApplied } from './model/defaults';
+import {
+  applyDefaults,
+  normalizeSectionBarlines,
+  type DefaultsApplied,
+} from './model/defaults';
+import { applySlashGrid } from './model/slashGrid';
 import { readScoreInfo } from './model/scoreInfo';
 import { OsmdView } from './render/OsmdView';
 import { Transport } from './audio/Transport';
@@ -40,6 +45,12 @@ import { Banner } from './ui/Banner';
 import './App.css';
 import './print.css';
 
+// M9: Download + Playback are set aside while we focus the chord-chart rendering
+// pass — hidden for now (flip these to re-enable). Typed as boolean so the JSX
+// guards don't read as constant-false conditions.
+const ENABLE_PLAYBACK: boolean = false;
+const ENABLE_DOWNLOAD: boolean = false;
+
 /**
  * App shell (M1). Empty state → dropzone; once a score loads, the topbar +
  * score canvas. The MusicXML `Document` is the single source of truth
@@ -63,6 +74,13 @@ export default function App() {
       // Assign C major / 120 BPM if the file is missing them (PRD §11);
       // `defaults` (a fresh object per load) drives the dismissible alert.
       setDefaults(applyDefaults(parsed));
+      // M9: normalize every bar to a per-beat slash grid (the chart's bars are
+      // uniform slashes) so the displayed grid == the editable DOM and a chord
+      // attaches to any beat. Folded into the load baseline like the defaults.
+      applySlashGrid(parsed, { force: true });
+      // M9: open pre-existing section bars with the double barline (PRD §6.5),
+      // folded into the load baseline like the key/tempo defaults above.
+      normalizeSectionBarlines(parsed);
       setDoc(parsed);
       setFileName(file.name);
       setIo(fileIo);
@@ -306,6 +324,7 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         onUndo={undo}
         onRedo={redo}
         onDownload={handleDownload}
+        showDownload={ENABLE_DOWNLOAD}
         onPrint={handlePrint}
         onClose={onClose}
       />
@@ -346,7 +365,7 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         pendingAnnotation={pendingAnnotation}
         onConsumePendingAnnotation={consumePendingAnnotation}
       />
-      <Transport controls={transport} />
+      {ENABLE_PLAYBACK && <Transport controls={transport} />}
     </div>
   );
 }

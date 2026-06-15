@@ -1,6 +1,6 @@
 # Post-MVP improvements
 
-A parking lot for work to pick up **after** the PoC/MVP milestones (PRD §9, M0–M11) are complete. These are deliberately out of scope for the MVP — captured here so they aren't lost. Not prioritized; not committed to a milestone.
+A parking lot for work to pick up **after** the PoC/MVP milestones (PRD §9, M0–M12) are complete. These are deliberately out of scope for the MVP — captured here so they aren't lost. Not prioritized; not committed to a milestone.
 
 ---
 
@@ -153,13 +153,13 @@ Today only **chords** sound — the harmonic rhythm realized as block voicings (
 - **Click-to-audition a note** _(low-hanging)_ — click/select a notehead → hear that single pitch, mirroring the M6 chord audition. Nearly all the machinery already exists: a note is just a one-element chord, so [`previewChord([midi])`](../src/audio/player.ts) already sounds it; [`computeStaffEntries`](../src/overlay/projector.ts) already emits clickable per-notehead anchors and [`ChordLayer`](../src/overlay/ChordLayer.tsx) mounts hit-zones over them; [`nthSoundingNote`](../src/commands/chord.ts) resolves `(measureIndex, noteIndex) → <note>`; and [`voicing.ts`](../src/audio/voicing.ts) already has the step/octave/alter→MIDI conversion. The **only missing code** is a ~20-line `<note>` → MIDI reader plus one branch in the existing click handler. Estimate: ~half a day + QA. Caveat: a no-op on pure slash/`<unpitched>` placeholders — only meaningful for notes carrying a real `<pitch>`.
 - **Transport plays the melody line** _(larger)_ — sound the written note line alongside the chord regions during playback. This **reverses the documented chord-chart reading** (slashes keep time but don't articulate; placeholder pitches are never played), so it needs a **PRD decision** before any code, plus schedule/playback changes to emit and sound per-note pitch events.
 
-**Why deferred:** Beyond the MVP milestone scope (M0–M11) and the chord-chart premise the engine is built on. Captured so the (surprisingly small) audition path and the bigger melody-playback question aren't lost. Surfaced when the chord-preview-cutoff fix was being closed out.
+**Why deferred:** Beyond the MVP milestone scope (M0–M12) and the chord-chart premise the engine is built on. Captured so the (surprisingly small) audition path and the bigger melody-playback question aren't lost. Surfaced when the chord-preview-cutoff fix was being closed out.
 
 ---
 
 ## P10 — Evolve into a full lead-sheet editor (melody/note editing)
 
-> **This is an epic / north-star, not a single deferred refinement.** It changes the product's identity — from a **chord-chart corrector** (fix the chords over a fixed slash grid; PRD §3, §8) into a **lead-sheet authoring tool** where the user also writes and edits the **melody** itself. It therefore needs a **product-level decision and its own PRD track** (a milestone series beyond M0–M11), not just a slot in an existing milestone. P9 (note playback) is the first, smallest step on this path; this entry is the whole arc. _(Requested 2026-06-08.)_
+> **This is an epic / north-star, not a single deferred refinement.** It changes the product's identity — from a **chord-chart corrector** (fix the chords over a fixed slash grid; PRD §3, §8) into a **lead-sheet authoring tool** where the user also writes and edits the **melody** itself. It therefore needs a **product-level decision and its own PRD track** (a milestone series beyond M0–M12), not just a slot in an existing milestone. P9 (note playback) is the first, smallest step on this path; this entry is the whole arc. _(Requested 2026-06-08.)_
 
 A lead sheet is **melody (pitched notes + rhythm) + chord symbols (+ optionally lyrics)**. MusiPad already owns the chord-symbol half (M6) and renders/round-trips real notation; what's missing is **editing the notes**: their pitch, their rhythm, and adding/removing them.
 
@@ -200,7 +200,7 @@ The MVP's structural seams (Invariant #5) were built for exactly this kind of ex
 
 **Related:** **P9** (note playback — the first step), **P8** (enharmonic respell / `enharmonicAlternatives`, reused for pitch respell), **P7** (meter editing — shares the beat-math/`divisions` model the reflow engine needs), **P3** (instruments / play-along mute for a melody+chords mix), **P2** (lead-sheet conventions & road map).
 
-**Why deferred:** A deliberate expansion of the product's mission well beyond the PoC/MVP (M0–M11), which proves the chord-chart *correction* loop. Recorded here as the intended evolution path so the architecture decisions made for the MVP (DOM-as-truth, command layer, per-item overlay projection) are understood as the foundation this builds on — and so the hard part (rhythm reflow) is flagged before anyone assumes "it's just chord editing for notes."
+**Why deferred:** A deliberate expansion of the product's mission well beyond the PoC/MVP (M0–M12), which proves the chord-chart *correction* loop. Recorded here as the intended evolution path so the architecture decisions made for the MVP (DOM-as-truth, command layer, per-item overlay projection) are understood as the foundation this builds on — and so the hard part (rhythm reflow) is flagged before anyone assumes "it's just chord editing for notes."
 
 ---
 
@@ -289,3 +289,23 @@ Today MusiPad is a **corrector**: it loads an existing MusicXML and **patches** 
 **Risks / decisions:** measure renumbering + `@number` integrity; correct `<attributes>` placement and inheritance; barline / road-map (repeats, P2) interaction when inserting mid-chart; whether `ScoreIO.load` grows a `createBlank()` sibling. Multi-part stays out (single-part assumption, §15).
 
 **Relation to [[P10]]:** explicitly **not** the lead-sheet / melody editor — no note pitch/rhythm authoring. This is **chord-chart-native authoring** (structure + chords only), the natural next capability once M9's slash model lands; P10 remains the separate, heavier melody-editing epic. _(Requested 2026-06-15.)_
+
+---
+
+## P17 — Drag-to-reorder chords (snap to slashes)
+
+Let the user **drag a chord pill** onto another beat to move / reorder it, **snapping to the nearest slash** (beat anchor) — within a bar or across bars — mirroring the section/annotation drag-to-snap (M7). _(Requested 2026-06-15 for an upcoming milestone.)_
+
+**Why it's tractable now — M9 paid for most of it:**
+
+- **Slash anchors already exist.** M9's projector emits one anchor per beat with `{measureIndex, entryIndex, x, y}` ([`overlay/projector.ts`](../src/overlay/projector.ts)), and chord pills already sit on them ([`ChordLayer`](../src/overlay/ChordLayer.tsx)). Snapping = drop onto the nearest anchor's `{measureIndex, entryIndex}`.
+- **The drag-to-snap pattern is built.** [`MarkLayer`](../src/overlay/MarkLayer.tsx) already does pointer-down/move/up → highlight the target bar → `onMove(from, to)`; clone it for chord pills (pills are interactive, so a drag threshold must separate drag from the existing click-to-edit).
+- **The commands exist.** `setChordAt` / `removeChordAt` ([`commands/chord.ts`](../src/commands/chord.ts)) are measure-scoped and undoable; a `moveChord(fromMeasure, fromEntry, toMeasure, toEntry)` is remove-then-set (or one part-snapshot command), so undo/redo come for free.
+
+**Scope / decisions:**
+
+- Snap target = the nearest beat anchor (slash); an off-beat `<harmony>` `offset` snaps to the nearest beat.
+- Dropping on an **occupied** slash: overwrite / swap / no-op — pick one (overwrite is simplest, matching the section upsert).
+- Keep it distinct from click-to-edit (drag threshold) and disabled while playing (the chart is display-only then), like the chord editor.
+
+**Promoted to a milestone — M11** (2026-06-15): scheduled as its own chord-editing milestone **after M10** (A4 pages), since it doesn't fit the rendering / pages milestones. Full scope + AC now live in [PRD §9 → M11](./musicxml-editor-prd.md) and [`roadmap.md`](./roadmap.md). _No longer deferred._

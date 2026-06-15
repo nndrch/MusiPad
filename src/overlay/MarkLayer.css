@@ -141,3 +141,15 @@
 .mark-layer.is-playing .mark__label {
   cursor: default;
 }
+
+/* M9: section-start double barline — two thin vertical lines at the bar's left
+   edge, centered on the staff. Drawn here (not by OSMD) so it shows for both add
+   and move; the OSMD barline is stripped from the render clone. */
+.mark-divider {
+  position: absolute;
+  width: 4px;
+  transform: translateX(-50%); /* center the double line on the bar's left edge */
+  border-left: 1.6px solid var(--text);
+  border-right: 1.6px solid var(--text);
+  pointer-events: none;
+}

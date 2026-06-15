@@ -283,6 +283,27 @@ export const MarkLayer = memo(function MarkLayer({
         />
       )}
 
+      {/* M9: section-start double barline — our own divider, derived from section
+          presence (so it shows for add *and* move; the OSMD barline is stripped
+          from the render clone). Spans the staff lines; first bar exempt. */}
+      {variant === 'section' &&
+        marks.map((m) => {
+          if (m.measureIndex <= 0) return null;
+          const box = boxByIndex.get(m.measureIndex);
+          if (!box) return null;
+          return (
+            <div
+              key={`divider-${m.measureIndex}`}
+              className="mark-divider"
+              style={{
+                left: box.x,
+                top: box.staffTopY,
+                height: box.staffBottomY - box.staffTopY,
+              }}
+            />
+          );
+        })}
+
       {marks.map((m) => {
         const box = boxByIndex.get(m.measureIndex);
         if (!box) return null;

@@ -4,6 +4,7 @@ import type { ScoreInfo } from '../model/scoreInfo';
 import type { ChordSpec } from '../model/chordSymbol';
 import { OverlayLayer } from '../overlay/OverlayLayer';
 import { ChordLayer } from '../overlay/ChordLayer';
+import { SlashLayer } from '../overlay/SlashLayer';
 import { MarkLayer } from '../overlay/MarkLayer';
 import { ScoreHeader } from './ScoreHeader';
 import { NATURAL_WIDTH, useOsmd } from './useOsmd';
@@ -179,6 +180,11 @@ export function OsmdView({
               playingMeasure={playingMeasure}
               isPlaying={isPlaying}
               scrollRef={scrollRef}
+            />
+            <SlashLayer
+              osmdRef={osmdRef}
+              hostRef={containerRef}
+              renderSignal={renderSignal}
             />
             <ChordLayer
               osmdRef={osmdRef}

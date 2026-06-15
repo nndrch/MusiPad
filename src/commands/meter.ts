@@ -14,9 +14,10 @@
  * **Only slash bars are reflowed.** A bar whose rhythmic content is genuinely
  * slash placeholders (every main note a `<notehead>slash`) is regenerated to the
  * new grid; a bar with real melodic rhythm is left untouched (only the `<time>`
- * label changes). Reflowing real rhythm to a new meter is a different, much
- * larger problem (the lead-sheet rhythm engine, deferred — post-MVP P10); we own
- * the slash grid, not a melody's bar contents.
+ * label changes). The slash-grid generator itself lives in
+ * [`model/slashGrid`](../model/slashGrid.ts) and is shared with the M9 render
+ * clone (which forces every bar to the grid); here we call it with the default
+ * `force: false`, so M8's slash-only reflow is unchanged.
  *
  * Undo: the inverse snapshots the whole `<part>` subtree (`editElement`), so a
  * meter change — which touches every slash bar plus the time signature — reverts
@@ -24,17 +25,7 @@
  */
 
 import { type Command, editElement } from './Command';
-
-/** `<type>` name for a time-signature denominator (the slash's note value). */
-const NOTE_TYPE_FOR_DENOMINATOR: Record<number, string> = {
-  1: 'whole',
-  2: 'half',
-  4: 'quarter',
-  8: 'eighth',
-  16: '16th',
-  32: '32nd',
-  64: '64th',
-};
+import { numberFrom, rewriteSlashBar } from '../model/slashGrid';
 
 export function setMeter(beats: number, beatType: number): Command {
   return editElement(`Set meter to ${beats}/${beatType}`, firstPart, (part) =>
@@ -81,120 +72,4 @@ function writeTime(time: Element, beats: number, beatType: number): void {
     beatsEl.after(typeEl);
   }
   typeEl.textContent = String(beatType);
-}
-
-/**
- * Regenerate a bar's slash grid to `beats` slashes of value `beatType`. No-op
- * for a bar with no rhythmic content or with any non-slash (melodic) note.
- * Existing `<harmony>` chord symbols are preserved and re-anchored to the
- * nearest surviving beat (clamped into range, so a chord is never dropped).
- */
-function rewriteSlashBar(
-  measure: Element,
-  beats: number,
-  beatType: number,
-  divisions: number,
-): void {
-  const doc = measure.ownerDocument;
-
-  // Walk the bar: collect the rhythmic nodes (to replace) and note where each
-  // harmony attaches (the beat index of the main note that follows it).
-  const mainNotes: Element[] = [];
-  const harmonies: { el: Element; beatPos: number }[] = [];
-  const rhythmNodes: Element[] = [];
-  let firstRhythm: Element | null = null;
-  let beatPos = 0;
-
-  for (const el of Array.from(measure.children)) {
-    switch (el.tagName) {
-      case 'harmony':
-        harmonies.push({ el, beatPos });
-        rhythmNodes.push(el);
-        firstRhythm ??= el;
-        break;
-      case 'note': {
-        // A <chord/> note stacks on the previous onset — it adds no beat.
-        if (!el.querySelector(':scope > chord')) {
-          mainNotes.push(el);
-          beatPos++;
-        }
-        rhythmNodes.push(el);
-        firstRhythm ??= el;
-        break;
-      }
-      case 'backup':
-      case 'forward':
-        rhythmNodes.push(el);
-        firstRhythm ??= el;
-        break;
-    }
-  }
-
-  if (mainNotes.length === 0) return; // nothing rhythmic to reflow
-  // Reflow only a genuine slash bar; leave real rhythm to the (deferred) engine.
-  const allSlash = mainNotes.every(
-    (n) =>
-      n.querySelector(':scope > notehead')?.textContent?.trim() === 'slash',
-  );
-  if (!allSlash) return;
-
-  // Keep the chart's placeholder pitch (e.g. B4) by cloning an existing slash's.
-  const pitchTemplate = mainNotes[0].querySelector(':scope > pitch');
-  const durTicks = Math.round((divisions * 4) / beatType);
-  const typeName = NOTE_TYPE_FOR_DENOMINATOR[beatType] ?? 'quarter';
-
-  const anchor = firstRhythm!.previousElementSibling;
-  for (const node of rhythmNodes) node.remove();
-
-  // Rebuild: for each new beat, emit any harmonies anchored to it, then a slash.
-  const lastBeat = beats - 1;
-  const frag = doc.createDocumentFragment();
-  for (let i = 0; i < beats; i++) {
-    for (const h of harmonies) {
-      if (Math.min(h.beatPos, lastBeat) === i) frag.appendChild(h.el);
-    }
-    frag.appendChild(makeSlashNote(doc, durTicks, typeName, pitchTemplate));
-  }
-
-  if (anchor) anchor.after(frag);
-  else measure.prepend(frag);
-}
-
-/** A single slash placeholder note (`<pitch> <duration> <type> <notehead>`). */
-function makeSlashNote(
-  doc: Document,
-  durTicks: number,
-  typeName: string,
-  pitchTemplate: Element | null,
-): Element {
-  const note = doc.createElement('note');
-  const pitch = pitchTemplate
-    ? (pitchTemplate.cloneNode(true) as Element)
-    : defaultPitch(doc);
-  const duration = doc.createElement('duration');
-  duration.textContent = String(durTicks);
-  const type = doc.createElement('type');
-  type.textContent = typeName;
-  const notehead = doc.createElement('notehead');
-  notehead.textContent = 'slash';
-  note.append(pitch, duration, type, notehead);
-  return note;
-}
-
-/** Fallback placeholder pitch (B4) for charts with no existing slash to copy. */
-function defaultPitch(doc: Document): Element {
-  const pitch = doc.createElement('pitch');
-  const step = doc.createElement('step');
-  step.textContent = 'B';
-  const octave = doc.createElement('octave');
-  octave.textContent = '4';
-  pitch.append(step, octave);
-  return pitch;
-}
-
-function numberFrom(el: Element | null): number | null {
-  const text = el?.textContent ?? null;
-  if (text == null) return null;
-  const n = Number.parseFloat(text);
-  return Number.isNaN(n) ? null : n;
 }

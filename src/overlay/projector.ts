@@ -28,6 +28,15 @@ export interface MeasureBox {
   y: number;
   width: number;
   height: number;
+  /**
+   * Top / middle / bottom **staff-line** y in px — read from the staff geometry,
+   * so they're independent of bar content (chords, stems). The slash sits on
+   * `staffMidY`; the section divider spans `staffTopY`→`staffBottomY`. Fall back
+   * to box geometry if the stave isn't exposed.
+   */
+  staffTopY: number;
+  staffMidY: number;
+  staffBottomY: number;
 }
 
 /**
@@ -43,6 +52,13 @@ export interface StaffEntryAnchor {
   entryIndex: number;
   /** Anchor x in unscaled px — the notehead position. */
   x: number;
+  /**
+   * The **middle staff line** y in unscaled px — read from the staff geometry
+   * (one value per measure), so it's the same for every beat and independent of
+   * chords / stems. The custom `SlashLayer` (M9) centers its slash here, so
+   * slashes always sit dead-center on the staff.
+   */
+  y: number;
   /**
    * Chord-row top in px — where a pill / ＋ sits. **Uniform per system**: the
    * highest measure-box top on the line, so a chord in any bar defines the row
@@ -70,10 +86,19 @@ interface BBox {
   BorderTop: number;
   BorderBottom: number;
 }
+interface VFStave {
+  getYForLine(line: number): number;
+  getNumLines?: () => number;
+}
 interface GMeasure {
   PositionAndShape: BBox;
   ParentMusicSystem?: { PositionAndShape: BBox };
   staffEntries?: { PositionAndShape: BBox }[];
+  /**
+   * The rendered VexFlow stave (VexFlow backend). Its line geometry is the
+   * content-independent source of truth for staff-line y positions.
+   */
+  stave?: VFStave;
 }
 
 /** Bottom edge of a bounding box, in units. */
@@ -123,6 +148,28 @@ function boxTopHeight(bb: BBox): { top: number; height: number } {
 }
 
 /**
+ * Top / middle / bottom staff-line y in **px**, read from the rendered VexFlow
+ * stave — content-independent. A note's or staff-entry's bounding-box center
+ * drifts with chord symbols above the bar and with stems; the staff lines do
+ * not. Returns null when the stave isn't exposed (non-VexFlow backend), so
+ * callers fall back to box geometry. VexFlow stave coordinates are already in
+ * the SVG's px space, so they are used directly (no `× k`).
+ */
+function staffLinesPx(
+  gm: GMeasure,
+): { top: number; mid: number; bottom: number } | null {
+  const stave = gm.stave;
+  if (!stave || typeof stave.getYForLine !== 'function') return null;
+  const lines = stave.getNumLines?.() ?? 5;
+  const last = Math.max(lines - 1, 0);
+  return {
+    top: stave.getYForLine(0),
+    mid: stave.getYForLine(last / 2),
+    bottom: stave.getYForLine(last),
+  };
+}
+
+/**
  * One rectangle per measure (document order). Horizontal extent comes from the
  * measure's own box; vertical extent from its parent music system, so every bar
  * on a line shares one clean band that includes the chord-symbol row above the
@@ -150,12 +197,20 @@ export function computeMeasureBoxes(
     const sysBox = gm.ParentMusicSystem?.PositionAndShape;
     const { top, height } = boxTopHeight(sysBox ?? gm.PositionAndShape);
 
+    // Staff lines (content-independent); fall back to the measure's own box.
+    const sl = staffLinesPx(gm);
+    const own = boxTopHeight(gm.PositionAndShape);
+    const ownBottom = boxBottom(gm.PositionAndShape);
+
     boxes.push({
       measureIndex: mi,
       x: left * k,
       y: top * k,
       width: width * k,
       height: height * k,
+      staffTopY: sl ? sl.top : own.top * k,
+      staffMidY: sl ? sl.mid : ((own.top + ownBottom) / 2) * k,
+      staffBottomY: sl ? sl.bottom : ownBottom * k,
     });
   }
 
@@ -207,6 +262,13 @@ export function computeStaffEntries(
     const bottom = boxBottom(gm.PositionAndShape);
     const entries = gm.staffEntries ?? [];
 
+    // The middle staff line — one value for the whole measure, from the staff
+    // geometry, so it's the same for every beat and independent of what each
+    // entry holds (a chord above the bar, a stem). That per-entry box content
+    // was skewing the slash height before.
+    const sl = staffLinesPx(gm);
+    const midY = sl ? sl.mid : ((ownTop + bottom) / 2) * k;
+
     for (let ei = 0; ei < entries.length; ei++) {
       const bb = entries[ei]?.PositionAndShape;
       if (!bb) continue;
@@ -214,6 +276,7 @@ export function computeStaffEntries(
         measureIndex: mi,
         entryIndex: ei,
         x: bb.AbsolutePosition.x * k,
+        y: midY,
         chordRowY: rowTop * k,
         slotBottomY: bottom * k,
       });
