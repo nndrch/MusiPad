@@ -17,6 +17,8 @@ interface TopbarProps {
   onRedo: () => void;
   /** Save the live DOM as a `.musicxml` download (M7). */
   onDownload: () => void;
+  /** Whether to show the Download button (M9: hidden while export is out of scope). */
+  showDownload?: boolean;
   /** Print the score (browser print dialog, score-only via `@media print`, M7). */
   onPrint: () => void;
   /** Close the current score and return to the empty state. */
@@ -37,6 +39,7 @@ export function Topbar({
   onUndo,
   onRedo,
   onDownload,
+  showDownload = true,
   onPrint,
   onClose,
 }: TopbarProps) {
@@ -81,15 +84,17 @@ export function Topbar({
         <Printer size={14} strokeWidth={1.75} />
         Print
       </button>
-      <button
-        type="button"
-        className="topbar__btn topbar__btn--primary"
-        onClick={onDownload}
-        title="Download as MusicXML"
-      >
-        <Download size={14} strokeWidth={1.75} />
-        Download
-      </button>
+      {showDownload && (
+        <button
+          type="button"
+          className="topbar__btn topbar__btn--primary"
+          onClick={onDownload}
+          title="Download as MusicXML"
+        >
+          <Download size={14} strokeWidth={1.75} />
+          Download
+        </button>
+      )}
 
       <button type="button" className="topbar__btn" onClick={onClose}>
         <X size={14} strokeWidth={1.75} />

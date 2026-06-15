@@ -16,6 +16,7 @@
  */
 
 import { type Command, editElement } from './Command';
+import { insertLeftDoubleBarline, removeLeftDoubleBarline } from './barline';
 
 /** `measureIndex`-th `<measure>` in the primary part, or null. */
 function nthMeasure(doc: Document, measureIndex: number): Element | null {
@@ -84,6 +85,9 @@ export function addSection(measureIndex: number, label: string): Command {
         return;
       }
       insertDirection(measure, makeSectionDirection(measure.ownerDocument, label));
+      // A new section opens with a double barline — the chart convention (M9,
+      // PRD §6.5). The first bar of the chart is exempt (no leading double bar).
+      if (measureIndex > 0) insertLeftDoubleBarline(measure);
     },
   );
 }
@@ -109,7 +113,11 @@ export function removeSection(measureIndex: number): Command {
     (doc) => nthMeasure(doc, measureIndex),
     (measure) => {
       const direction = sectionDirection(measure);
-      if (direction) removeRehearsal(direction);
+      if (direction) {
+        removeRehearsal(direction);
+        // Drop the section's double barline too (only ours; repeats untouched).
+        if (measureIndex > 0) removeLeftDoubleBarline(measure);
+      }
     },
   );
 }
@@ -133,6 +141,9 @@ export function moveSection(fromIndex: number, toIndex: number): Command {
       const moved = direction.cloneNode(true) as Element;
       direction.remove();
       insertDirection(to, moved);
+      // Move the section's double barline with it (first bar exempt either end).
+      if (fromIndex > 0) removeLeftDoubleBarline(from);
+      if (toIndex > 0) insertLeftDoubleBarline(to);
     },
   );
 }

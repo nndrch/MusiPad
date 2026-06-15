@@ -4,6 +4,7 @@ import {
   type IOSMDOptions,
 } from 'opensheetmusicdisplay';
 import { feelWordsDirection, isAnnotation } from '../model/directions';
+import { applySlashGrid } from '../model/slashGrid';
 
 export type OsmdStatus = 'empty' | 'rendering' | 'ready' | 'error';
 
@@ -73,6 +74,22 @@ function buildRenderDoc(doc: Document): Document {
     const isSection = !!dir.querySelector('direction-type > rehearsal');
     if (isSection || isAnnotation(dir) || dir === feel) dir.remove();
   });
+  // M9: flatten every bar to the meter's uniform slash grid, so the chart shows
+  // only slashes — the written melody is hidden. Clone-only: the real `doc`
+  // keeps its notes for playback/download (Invariant #2). Clef/key glyphs are
+  // hidden via EngravingRules below; chords/sections/annotations carry over.
+  applySlashGrid(clone, { force: true });
+  // M9: the section-start double barline is drawn as our own overlay divider
+  // (MarkLayer), derived from section presence — so strip it from the clone;
+  // OSMD shouldn't also draw it. The real DOM keeps the <barline> for download.
+  clone.querySelectorAll('part > measure > barline').forEach((bar) => {
+    if (
+      bar.getAttribute('location') === 'left' &&
+      bar.querySelector('bar-style')?.textContent?.trim() === 'light-light'
+    ) {
+      bar.remove();
+    }
+  });
   return clone;
 }
 
@@ -106,6 +123,22 @@ function applyEngravingRules(osmd: OpenSheetMusicDisplay): void {
   rules.MinSkyBottomDistBetweenSystems = 14; // (5)
   rules.PageTopMargin = 9; // (5)
   rules.ChordSymbolYPadding = 1.2; // (0) — space between staff and chord marker
+  // M9: the simplified chord chart shows only bars + a slash grid + chords, not
+  // standard notation — so hide the clef and the key-signature glyph. The time
+  // signature stays (drawn at each system start); the melody is already removed
+  // upstream in `buildRenderDoc` (the slash-grid flatten).
+  rules.RenderClefsAtBeginningOfStaffline = false;
+  rules.RenderKeySignatures = false;
+  // M9: we draw our own minimal rhythm slashes (SlashLayer) — paint OSMD's
+  // slash noteheads + stems transparent so only ours show (the same trick the
+  // chord glyphs use). Colour doesn't affect layout, so the staff entries the
+  // overlay anchors to are unchanged.
+  const slashColors = rules as unknown as {
+    DefaultColorNotehead: string;
+    DefaultColorStem: string;
+  };
+  slashColors.DefaultColorNotehead = '#00000000';
+  slashColors.DefaultColorStem = '#00000000';
 }
 
 /**
