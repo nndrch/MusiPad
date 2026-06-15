@@ -66,18 +66,28 @@ Suggested UI-quality → kind map: `maj→major`, `min/m→minor`, `7→dominant
 
 - **Decision (S1 spike, [`spikes.md`](./spikes.md)):** OSMD ignores `measure-style/slash` (region form); use per-note `<notehead>slash</notehead>`. This is also what the pipeline emits.
 - `ToggleBarSlashes` adds/removes the `notehead` child on each note in the bar; capture the original notehead for the inverse.
+- **Status:** the interactive per-bar slash **toggle UI** was **de-scoped from M7 to post-MVP P11** (built on `post-mvp/slash-toggle`); rendering of source slashes still works. Note respell likewise deferred to **P12**. See [`post-mvp-improvements.md`](./post-mvp-improvements.md).
 
 ## Sections & annotations — `direction/direction-type`
 
-- Section mark = `rehearsal` (default **square** enclosure); annotation = `words` (no enclosure). Both live in `direction-type`; the parent `direction` has `placement` (above/below) and attaches to a measure.
-- Moving/re-parenting (M7): preserve `enclosure`, `placement`, positioning (`default-x/y`, `relative-x/y`), and text-formatting attributes.
+Both marks are stored as **standard MusicXML** `<direction placement="above">` in the part; the mark itself is a child of `direction-type`. One section + one annotation max per measure (snap-to-bar model, keyed by `measureIndex`).
+
+- **Section** = boxed rehearsal mark: `<direction-type><rehearsal enclosure="square">LABEL</rehearsal></direction-type>`.
+- **Annotation** = free text: `<direction-type><words>TEXT</words></direction-type>`, with the `<direction>` tagged `data-musipad="annotation"` (see "non-schema marker" below).
+- **Feel vs. annotation:** the **Feel/style** chip is the **first _untagged_ `<words>` direction in measure 1** (`feelWordsDirection`). The `data-musipad` tag is what keeps a user annotation in measure 1 from being mistaken for the Feel chip (and vice-versa). Pre-existing untagged `<words>` a file already had (e.g. "D.C. al Coda") are left alone — not treated as annotations, rendered natively by OSMD.
+- **No double-render:** section + annotation directions are **stripped from the OSMD render clone** (`buildRenderDoc`, [`render/useOsmd.ts`](../src/render/useOsmd.ts)) and drawn purely as HTML overlays ([`overlay/MarkLayer.tsx`](../src/overlay/MarkLayer.tsx), mounted twice — `variant="section"`/`variant="annotation"`), so OSMD doesn't also draw them. EngravingRules are opened up (`MinimumDistanceBetweenSystems`, `MinSkyBottomDistBetweenSystems`, `PageTopMargin`, `ChordSymbolYPadding`) so the overlay marks clear the staff.
+- **Moving/re-parenting:** preserve `enclosure`, `placement`, positioning (`default-x/y`, `relative-x/y`), text-formatting attributes, **and the `data-musipad` tag**. Move uses a whole-`<part>` snapshot (like `transpose.ts`) so undo restores both the old and new measure.
+
+**Implemented (M7, [`commands/section.ts`](../src/commands/section.ts) + [`commands/annotation.ts`](../src/commands/annotation.ts) + readers in [`model/directions.ts`](../src/model/directions.ts) — `readChartSections`/`readChartAnnotations`/`feelWordsDirection`/`firstFreeMeasure` + `tagAnnotation`/`isAnnotation`):** add (toolbar `＋Section` preset dropdown / `＋Note`, targeting the selected bar else the first bar with no mark of that kind), inline edit (Enter commit / Esc cancel / blur commit), drag-to-snap move between bars, remove (Backspace / ×) — all undoable.
+
+> **Non-schema marker:** `data-musipad="annotation"` is a custom (non-schema) attribute on `<direction>`. The W3C MusicXML XSD does not define `data-*` attributes, so a **strict schema validator could reject a downloaded file**. We accept this for robust, position-independent annotation identification; a schema-legal carrier (e.g. `<other-direction>`, a comment marker) is parked in [`post-mvp-improvements.md`](./post-mvp-improvements.md) **P13**.
 
 ## Lead-sheet conventions (Berklee)
 
 Source: [Berklee Today — "The Lead Sheet"](https://www.berklee.edu/berklee-today/summer-2018/lead-sheet). A lead sheet's job is "just enough information for everyone to be on the same page." Our files are specifically **chord charts** (slashes + chord symbols, no melody) — a chart _without_ melody is a chord chart, not a lead sheet.
 
 - **Chord-symbol spelling (set via `kind/@text`):** minor = `mi` / `min` / `–` (not bare `m`, which reads ambiguously next to `M`/`Maj`); major-seventh = `Maj7` / `Ma7`; augmented = `+`; diminished = `°`; half-diminished = `ø`; suspended = `sus4` / `sus2`; tensions/alterations in parentheses, e.g. `C7(♯11)`; alternate bass / slash chords as `C/E` (`harmony/bass`). Be consistent across the chart.
-- **Road map / navigation** (what keeps a chart to one page): repeat barlines, multiple endings (`ending`), `segno`/`coda` + `D.S.`/`D.C.` jumps, and text directions like "Play 4×" / "Vamp out" (`words`). **PoC: preserve these verbatim and render them** (OSMD handles repeats/endings/coda/segno); _editing_ the road map is post-MVP. Our free-text annotations (`words`) already cover "Play 4×"-style directions.
+- **Road map / navigation** (what keeps a chart to one page): repeat barlines, multiple endings (`ending`), `segno`/`coda` + `D.S.`/`D.C.` jumps, and text directions like "Play 4×" / "Vamp out" (`words`). **PoC: preserve these verbatim and render them** (OSMD handles repeats/endings/coda/segno); _editing_ the road map is post-MVP. M7 free-text **annotations** (`<words>` tagged `data-musipad="annotation"`, see "Sections & annotations" above) cover "Play 4×"-style directions.
 - **Style / feel marking:** a chart should carry a style indication (e.g. "Medium Swing", "Bossa", "Ballad") alongside the tempo — usually a `words` direction near the top. **Implemented (M1):** read as the first `words` direction in measure 1, shown as the header "Feel" chip (`model/scoreInfo.ts`).
 - **Legibility:** lead sheets favor a small, consistent number of bars per line (commonly ~4 in 4/4) and one page. **Implemented (M1):** `RenderXMeasuresPerLineAkaSystem = 4`, with `NewSystemAtXMLNewSystemAttribute` so explicit `<print new-system="yes">` / `new-page` breaks from the source still take effect.
 - **Slash rhythm:** `////` (one slash per beat) with chords above is the rhythm-section convention — exactly our per-note `<notehead>slash</notehead>` (above).

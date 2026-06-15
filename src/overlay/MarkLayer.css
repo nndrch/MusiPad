@@ -1,0 +1,143 @@
+/*
+ * Section + annotation overlay (M7). Like the chord layer, we draw our own HTML
+ * over OSMD's SVG (OSMD's native rehearsal/words are stripped from the render
+ * clone in useOsmd) and the layer is click-through except for its own marks. It
+ * lives inside `.osmd-scale`, so marks scale with the score. Visual language
+ * (§6.1): grayscale base, the single orange accent reserved for the hovered /
+ * selected / dragging mark. Contract (§6/§10): a **box = structural section**,
+ * **plain text = annotation**.
+ */
+.mark-layer {
+  position: absolute;
+  pointer-events: none; /* clicks fall through … */
+  z-index: 3; /* … above chords (z 2) and the selection overlay (z 1) */
+}
+
+.mark {
+  position: absolute;
+  pointer-events: auto; /* … except the marks themselves */
+  white-space: nowrap;
+}
+
+/* The draggable / clickable text. Click to edit in place, drag to move. */
+.mark__label {
+  display: inline-block;
+  cursor: grab;
+  user-select: none;
+  color: var(--text);
+  line-height: 1.2;
+  transition:
+    color 90ms ease,
+    border-color 90ms ease,
+    background-color 90ms ease;
+}
+.mark__label:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 1px;
+}
+
+/* Section — boxed rehearsal mark (the structural-section contract). */
+.mark--section .mark__label {
+  padding: 1px 6px;
+  border: 1.5px solid var(--text-muted);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Annotation — plain, un-boxed free text. */
+.mark--annotation .mark__label {
+  padding: 0 2px;
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* Hover / selected / dragging → the single accent (A2 item level, B7.7). */
+.mark:hover .mark__label,
+.mark.is-selected .mark__label,
+.mark.is-dragging .mark__label {
+  color: var(--accent);
+}
+.mark--section:hover .mark__label,
+.mark--section.is-selected .mark__label,
+.mark--section.is-dragging .mark__label {
+  border-color: var(--accent);
+}
+
+/* Dragging — lift above siblings; the pill follows the cursor (inline transform). */
+.mark.is-dragging {
+  z-index: 10;
+  opacity: 0.9;
+}
+.mark.is-dragging .mark__label {
+  cursor: grabbing;
+}
+
+/* × remove affordance — revealed on hover, pinned to the mark's top-right. */
+.mark__remove {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: var(--shadow-pop);
+  transition:
+    opacity 90ms ease,
+    color 90ms ease,
+    background-color 90ms ease;
+}
+.mark:hover .mark__remove {
+  opacity: 1;
+  pointer-events: auto;
+}
+.mark__remove:hover {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Inline edit field — replaces the label while editing (A5). */
+.mark__input {
+  margin: 0;
+  padding: 1px 5px;
+  min-width: 64px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.2;
+  outline: none;
+}
+.mark--section .mark__input {
+  font-weight: 600;
+}
+.mark--annotation .mark__input {
+  font-style: italic;
+}
+
+/* Snap target highlight shown while dragging (A7). */
+.mark-drop {
+  position: absolute;
+  border: 2px dashed var(--accent);
+  background: var(--accent-tint);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* Display-only while playing: marks read, but no editing affordances. */
+.mark-layer.is-playing .mark__label {
+  cursor: default;
+}

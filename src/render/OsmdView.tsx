@@ -4,9 +4,13 @@ import type { ScoreInfo } from '../model/scoreInfo';
 import type { ChordSpec } from '../model/chordSymbol';
 import { OverlayLayer } from '../overlay/OverlayLayer';
 import { ChordLayer } from '../overlay/ChordLayer';
+import { MarkLayer } from '../overlay/MarkLayer';
 import { ScoreHeader } from './ScoreHeader';
 import { NATURAL_WIDTH, useOsmd } from './useOsmd';
 import './OsmdView.css';
+
+/** Stable no-op for the section layer's (unused) pending-edit callback. */
+const NO_PENDING_EDIT = () => {};
 
 interface OsmdViewProps {
   doc: Document;
@@ -35,6 +39,17 @@ interface OsmdViewProps {
   onRemoveChord: (measureIndex: number, entryIndex: number) => void;
   /** Audition a chord (the editor's Hear button, M6). */
   onPreviewChord: (spec: ChordSpec) => void;
+  /** Section + annotation authoring (M7) — undoable commands. */
+  onEditSection: (measureIndex: number, label: string) => void;
+  onRemoveSection: (measureIndex: number) => void;
+  onMoveSection: (fromIndex: number, toIndex: number) => void;
+  onEditAnnotation: (measureIndex: number, text: string) => void;
+  onRemoveAnnotation: (measureIndex: number) => void;
+  onMoveAnnotation: (fromIndex: number, toIndex: number) => void;
+  /** Bar whose annotation editor should auto-open (after ＋Note), or null (M7). */
+  pendingAnnotation: number | null;
+  /** Called once the pending annotation editor has been opened (M7). */
+  onConsumePendingAnnotation: () => void;
 }
 
 /**
@@ -57,6 +72,14 @@ export function OsmdView({
   onSetChord,
   onRemoveChord,
   onPreviewChord,
+  onEditSection,
+  onRemoveSection,
+  onMoveSection,
+  onEditAnnotation,
+  onRemoveAnnotation,
+  onMoveAnnotation,
+  pendingAnnotation,
+  onConsumePendingAnnotation,
 }: OsmdViewProps) {
   // Bump a render signal after each successful OSMD render so the overlay
   // re-projects its measure boxes; also forward the instance to App (M2).
@@ -167,6 +190,36 @@ export function OsmdView({
               onSetChord={onSetChord}
               onRemoveChord={onRemoveChord}
               onPreview={onPreviewChord}
+            />
+            <MarkLayer
+              variant="section"
+              osmdRef={osmdRef}
+              hostRef={containerRef}
+              renderSignal={renderSignal}
+              doc={doc}
+              revision={revision ?? 0}
+              isPlaying={isPlaying}
+              selectedMeasure={selectedMeasure}
+              onEdit={onEditSection}
+              onRemove={onRemoveSection}
+              onMove={onMoveSection}
+              pendingEdit={null}
+              onPendingEditConsumed={NO_PENDING_EDIT}
+            />
+            <MarkLayer
+              variant="annotation"
+              osmdRef={osmdRef}
+              hostRef={containerRef}
+              renderSignal={renderSignal}
+              doc={doc}
+              revision={revision ?? 0}
+              isPlaying={isPlaying}
+              selectedMeasure={selectedMeasure}
+              onEdit={onEditAnnotation}
+              onRemove={onRemoveAnnotation}
+              onMove={onMoveAnnotation}
+              pendingEdit={pendingAnnotation}
+              onPendingEditConsumed={onConsumePendingAnnotation}
             />
           </div>
           {status === 'rendering' && (

@@ -7,6 +7,8 @@
  * major/minor, MusicXML allows the church modes and `none`, and non-traditional
  * keys (`key-step`/`key-alter`) with no `fifths` — all handled gracefully.
  */
+import { feelWordsDirection } from './directions';
+
 export interface ScoreInfo {
   /** Song title (`work-title`, falling back to `movement-title`), or null. */
   title: string | null;
@@ -123,11 +125,12 @@ function readTitle(doc: Document): string | null {
 /**
  * Style/feel marking — by lead-sheet convention the first free-text `words`
  * direction at the top of the chart (first measure), e.g. "Medium Swing".
+ * Shares `feelWordsDirection` with the render clone and the annotation layer so
+ * a user annotation in measure 1 is never mistaken for the feel chip (M7).
  */
 function readStyle(doc: Document): string | null {
-  const firstMeasure = doc.querySelector('part measure');
-  const words = firstMeasure
-    ?.querySelector('direction direction-type words')
+  const words = feelWordsDirection(doc)
+    ?.querySelector('direction-type words')
     ?.textContent?.trim();
   return words || null;
 }

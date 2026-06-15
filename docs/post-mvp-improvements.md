@@ -15,7 +15,7 @@ Make the rendered score feel like a deliberately designed document rather than d
   - _Text font_ — align the score's text elements (title, chord symbols, rehearsal/section marks, annotations) with the app UI font stack (`--font-ui`) so the page reads as one design, not two.
 - **Typography fine-tuning.**
   - Chord-symbol size, weight, and vertical position relative to the staff.
-  - Section (rehearsal) mark styling — currently a boxed label nudged above the chord row via a fixed offset; revisit once these become HTML overlays (M7) so spacing is consistent across first vs. mid-page systems (see note below).
+  - Section (rehearsal) mark styling — sections are now HTML overlay pills positioned by MusiPad ([`MarkLayer.tsx`](../src/overlay/MarkLayer.tsx), shipped M7), no longer nudged via OSMD's fixed `RehearsalMarkYOffsetDefault`; remaining work is fine-tuning the pill's size/weight/vertical position now that we own placement.
   - Title / header treatment on the paper (size, spacing, optional removal in favor of the app topbar).
   - Staff size, system spacing, and margins for a calmer rhythm on the page.
 
@@ -24,7 +24,7 @@ Make the rendered score feel like a deliberately designed document rather than d
 **Notes / context:**
 
 - OSMD exposes most of this via `EngravingRules` and `IOSMDOptions` (font family, `ChordSymbol*`, rehearsal-mark rules, page format/margins) and supports loading custom music fonts.
-- Known MVP stopgap: rehearsal-mark vertical offset is a single fixed value (`RehearsalMarkYOffsetDefault`), so the first system reads roomier than mid-page systems. Proper fix lands when sections become draggable HTML overlays we position ourselves (PRD §7.4, M7).
+- ~~Known MVP stopgap: rehearsal-mark vertical offset is a single fixed value (`RehearsalMarkYOffsetDefault`)…~~ **Resolved in M7:** sections are now draggable HTML overlays MusiPad positions itself, and the marks are stripped from the OSMD render clone (`buildRenderDoc`), so OSMD's fixed `RehearsalMarkYOffsetDefault` no longer applies — only the overlay pill's typography is left to fine-tune (above).
 
 **Why deferred:** Visual polish, not core correction functionality. The MVP proves the load → edit → play → export loop; refined engraving comes after.
 
@@ -104,7 +104,7 @@ Items flagged by the M4 adversarial review and deliberately deferred — the cor
 
 - **Disable Key/Tempo/Transpose edits while playing.** Simplest fix for the edit-during-playback behavior: while the transport is playing, disable (grey out) the Key dropdown, Transpose ± and Tempo field so an edit can't yank the schedule out from under playback. (Today an edit reloads the schedule, stopping playback and snapping the playhead to the top — see `useTransport.ts`.)
 - **Or: preserve playback position across a schedule rebuild.** The richer alternative to disabling — give `Player` a reload path that keeps `playing`/`positionSec` and re-strikes the held chord at the current position, so a tempo edit takes effect mid-play (fits the **M5** transport/playhead work).
-- **Extreme-key enharmonic round-trip.** Transpose is key-aware ([`transpose.ts`](../src/commands/transpose.ts) — it picks the fewest-accidental spelling, so keys stay within ±7 and read conventionally, e.g. A major ↓ = A♭ major). The one residual edge: the two extreme keys at exactly ±6/±7 fifths (F♯/G♭ and C♯/C♭ major) can round-trip (`+n` then `−n`) onto their _enharmonic equivalent_ spelling — musically identical, and these keys are practically absent from lead-sheet charts. A full respell policy (M7) could pin a house spelling here.
+- **Extreme-key enharmonic round-trip.** Transpose is key-aware ([`transpose.ts`](../src/commands/transpose.ts) — it picks the fewest-accidental spelling, so keys stay within ±7 and read conventionally, e.g. A major ↓ = A♭ major). The one residual edge: the two extreme keys at exactly ±6/±7 fifths (F♯/G♭ and C♯/C♭ major) can round-trip (`+n` then `−n`) onto their _enharmonic equivalent_ spelling — musically identical, and these keys are practically absent from lead-sheet charts. A full respell policy (note respell, **P12**) could pin a house spelling here.
 - **Preserve non-canonical numeric text.** Transpose canonicalizes `alter` text (a source `"1.0"` becomes `"1"`); key/tempo edits are similar for numeric fields. Harmless for our pipeline (canonical integers only), but a fully byte-faithful patcher would leave untouched numeric formatting intact.
 - **Louder missing-data warning.** When a file loads without a key/tempo, M4 shows muted/italic empty-state placeholders ("no key", "no tempo") and the tempo field's "120" placeholder, and playback falls back to 120. A more prominent toast/banner is deferred to **M9** (toasts/empty states) since a coloured warning would break the §6.1 grayscale language used inline.
 
@@ -136,7 +136,7 @@ The shipped M6 chord editor is an **editable combobox** — a text field plus a 
 **Scope / ideas (if ever wanted):**
 
 - A **structured builder** behind the editor's ▾: a **Root** selector (letter A–G + ♭/♮/♯ accidental), **Quality** buttons grouped by family over the full `kind-value` enum (triads / sixths / sevenths / sus / extended / N.C. — B6.6), and a **collapsible `/ bass`** slash picker (B6.7). Picker clicks compose the working symbol (via the field as the single source of truth) and audition it; Add/Update commits.
-- **Enharmonic respell** (B6.5/B6.11): for an accidental root, a one-click `Respell → <twin>` (C♯↔D♭) that flips spelling while keeping quality/bass — backed by a pure `enharmonicAlternatives(step, alter)` helper (reusable for **note respell in M7**, which is where the A3 right-click context menu will first be built).
+- **Enharmonic respell** (B6.5/B6.11): for an accidental root, a one-click `Respell → <twin>` (C♯↔D♭) that flips spelling while keeping quality/bass — backed by a pure `enharmonicAlternatives(step, alter)` helper (reusable for **note respell**, deferred to **P12**, which is where the A3 right-click context menu will first be built).
 
 **Why deferred:** A full working prototype was built and verified (24/24 headless) on `feat/m6b-chord-picker`, then **cut on review as too complex for an MVP** — _"keep it simple as a dropdown with a list of chords"_ (2026-06-08). The dropdown stays the editor. This is recorded so the design (and the `enharmonicAlternatives` approach) isn't lost if a future, non-MVP iteration wants a richer builder.
 
@@ -175,13 +175,13 @@ The MVP's structural seams (Invariant #5) were built for exactly this kind of ex
 ### Scope — capabilities, roughly easiest → hardest
 
 1. **Note audition + melody playback** — see **P9**. Read note pitches; sound them on click and/or through the transport. Validates the pitch model end-to-end; lowest risk. _Prerequisite for everything below feeling real._
-2. **Pitch editing (in place, no rhythm change)** — change a selected note's pitch: drag up/down a staff step or arrow-key it, with accidental control (♯/♭/♮) and **enharmonic respell** (reuses the `enharmonicAlternatives` helper already slated for M7 / parked in **P8**). Writes `<pitch><step><octave><alter>` via a `Command`. **Local and reversible** — the measure's beat budget is untouched, so this respects Invariant #2 cleanly. Vertical hit-testing (a y on the staff → a diatonic step, given the clef + key) is the main new piece.
+2. **Pitch editing (in place, no rhythm change)** — change a selected note's pitch: drag up/down a staff step or arrow-key it, with accidental control (♯/♭/♮) and **enharmonic respell** (reuses the `enharmonicAlternatives` helper deferred to **P12** / parked in **P8**). Writes `<pitch><step><octave><alter>` via a `Command`. **Local and reversible** — the measure's beat budget is untouched, so this respects Invariant #2 cleanly. Vertical hit-testing (a y on the staff → a diatonic step, given the clef + key) is the main new piece.
 3. **Rhythm / duration editing + note entry — _the hard part._** Change a note's duration (`<duration>` ticks + `<type>` + dots), add a note (split a slash/rest into pitched notes), delete a note (→ rest). Unlike chord and pitch edits, **a duration change is non-local**: it shifts every following onset in the bar, and must keep the measure **beat-valid** against its `divisions` + time signature. This needs:
    - a **beat-budget / measure-rebalancing model** (durations must sum to the bar; over/under-full needs a policy — auto-rest fill, push/pull following notes, or reject the edit),
    - **beam and tie recomputation** (`<beam>`, `<tie>`/`<tied>`),
    - a **note-entry interaction** (mouse-on-staff = pitch + insertion point; or keyboard step-time; MIDI input is a later luxury), in the §6.1 "notepad calm" idiom.
    This is what separates a real lead-sheet *editor* from the current figure-level chord editor, and where most of the risk and design effort lives.
-4. **Slash ↔ pitched conversion + rests** — a lead sheet routinely mixes a **notated melody** (head/verses) with **slash bars** (solos). The current engine treats every notehead as a slash placeholder; this adds distinguishing real pitched notes from slash notation (`<notehead>slash`, slash `<measure-style>`) and converting between them. Pairs with the **M7 per-bar slash toggle**.
+4. **Slash ↔ pitched conversion + rests** — a lead sheet routinely mixes a **notated melody** (head/verses) with **slash bars** (solos). The current engine treats every notehead as a slash placeholder; this adds distinguishing real pitched notes from slash notation (`<notehead>slash`, slash `<measure-style>`) and converting between them. Pairs with the **per-bar slash toggle** (**P11**, built and parked on a branch).
 5. **Lyrics _(optional, classic lead sheet)_** — edit `<lyric>` text under notes (syllables, melismas). A natural follow-on once notes are editable; can be its own phase.
 
 ### Open questions / decisions this forces
@@ -219,3 +219,21 @@ A toolbar toggle that flips the **selected bar** between slash notation (`////`,
 Right-click a note → a context menu offering its enharmonic alternative spelling (F♯ ↔ G♭) at the same sounding pitch, via `transpose.ts`'s spelling tables (rewrite `<step>`+`<alter>`, octave preserved, natural's `<alter>` removed; minimal `<accidental>` writer when a real pitched note carries one). Builds the **A3** body-portal context-menu primitive (pointer-anchored, keyboard-nav, `data-*` dismiss like `ChordEditor`). **Scoped during M7, then deferred** (2026-06-08). _(Designed, not built.)_
 
 **Why deferred:** Respell is **moot on the chart's placeholder slash notes** (no meaningful pitch to respell); it only pays off once real note pitches are editable ([[P10]]). The A3 context menu was first-needed here, so it defers with respell — section/annotation remove (M7) uses ⌫/× instead. Shares the enharmonic-spelling idea with **P8** (chord respell). The first real home for both is the note-editing epic ([[P10]]).
+
+---
+
+## P13 — Schema-legal carrier for MusiPad-authored annotations
+
+M7 identifies MusiPad-authored free-text annotations by **content, not document position**: each annotation `<direction>` is tagged with a custom `data-musipad="annotation"` attribute (see [`model/directions.ts`](../src/model/directions.ts) — `tagAnnotation`/`isAnnotation`). This lets the readers tell a user annotation apart from the **Feel/style** chip (the first _untagged_ `<words>` in measure 1) and from pre-existing untagged `<words>` (e.g. "D.C. al Coda"), robustly across reload and re-parent.
+
+**The trade-off:** `data-*` is **not** part of the W3C MusicXML XSD — it's a non-schema custom attribute on `<direction>`. OSMD and ordinary consumers ignore unknown attributes (the file renders and round-trips fine), but a **strict schema validator could reject a downloaded file**.
+
+**Scope / ideas — migrate to a schema-legal carrier:**
+
+- an `<other-direction>` with a known/agreed value,
+- an XML comment marker adjacent to the direction,
+- or another schema-defined hook the readers can key off.
+
+Whichever is chosen, update the `directions.ts` readers (`readChartAnnotations`, `isAnnotation`/`tagAnnotation`) so identification stays **content-based, not position-based**.
+
+**Why deferred:** Annotation identification works today and the file renders / round-trips correctly through OSMD and normal consumers; strict-XSD validation is not part of the MVP's load → edit → play → export loop. Captured so the non-schema attribute is a known, deliberate decision — not an accident. _(Recorded 2026-06-15 at M7 close-out.)_

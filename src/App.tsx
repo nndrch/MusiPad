@@ -13,6 +13,23 @@ import { setKeySignature } from './commands/key';
 import { transpose } from './commands/transpose';
 import { setTempo } from './commands/tempo';
 import { removeChordAt, setChordAt } from './commands/chord';
+import {
+  addSection,
+  editSection,
+  moveSection,
+  removeSection,
+} from './commands/section';
+import {
+  addAnnotation,
+  editAnnotation,
+  moveAnnotation,
+  removeAnnotation,
+} from './commands/annotation';
+import {
+  firstFreeMeasure,
+  readChartAnnotations,
+  readChartSections,
+} from './model/directions';
 import { voicingFromSpec } from './audio/voicing';
 import type { ChordSpec } from './model/chordSymbol';
 import { Dropzone } from './ui/Dropzone';
@@ -165,11 +182,76 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
   // Cleared when a new score loads, via the adjust-state-in-render pattern
   // (same as the banner below) to avoid a setState-in-effect cascade.
   const [selectedMeasure, setSelectedMeasure] = useState<number | null>(null);
+  // Bar whose annotation editor should auto-open after ＋Note (M7); the
+  // annotation overlay consumes it once opened.
+  const [pendingAnnotation, setPendingAnnotation] = useState<number | null>(null);
   const [selectionDoc, setSelectionDoc] = useState(doc);
   if (selectionDoc !== doc) {
     setSelectionDoc(doc);
     setSelectedMeasure(null);
+    setPendingAnnotation(null);
   }
+
+  // Section + annotation authoring (M7) — undoable commands. The target bar is
+  // the selected one if a bar is selected; otherwise we drop the mark on the
+  // first bar that has no mark of that kind, so a toolbar add never silently
+  // overwrites an existing one (B7.2/B7.3). If every bar already has that mark
+  // and nothing is selected, it's a no-op. ＋Note also queues the new
+  // annotation's inline editor to open (pendingAnnotation).
+  const handleAddSection = useCallback(
+    (label: string) => {
+      const target =
+        selectedMeasure ??
+        firstFreeMeasure(
+          doc,
+          readChartSections(doc).map((s) => s.measureIndex),
+        );
+      if (target == null) return;
+      dispatch(addSection(target, label));
+    },
+    [dispatch, doc, selectedMeasure],
+  );
+  const handleAddAnnotation = useCallback(() => {
+    const annotated = readChartAnnotations(doc).map((a) => a.measureIndex);
+    const target = selectedMeasure ?? firstFreeMeasure(doc, annotated);
+    if (target == null) return;
+    // Skip a no-op dispatch (and its phantom undo step) if the bar already has
+    // an annotation (an explicitly selected bar may) — just reopen its editor.
+    if (!annotated.includes(target)) {
+      dispatch(addAnnotation(target, ''));
+    }
+    setPendingAnnotation(target);
+  }, [dispatch, doc, selectedMeasure]);
+  const handleEditSection = useCallback(
+    (measureIndex: number, label: string) =>
+      dispatch(editSection(measureIndex, label)),
+    [dispatch],
+  );
+  const handleRemoveSection = useCallback(
+    (measureIndex: number) => dispatch(removeSection(measureIndex)),
+    [dispatch],
+  );
+  const handleMoveSection = useCallback(
+    (from: number, to: number) => dispatch(moveSection(from, to)),
+    [dispatch],
+  );
+  const handleEditAnnotation = useCallback(
+    (measureIndex: number, text: string) =>
+      dispatch(editAnnotation(measureIndex, text)),
+    [dispatch],
+  );
+  const handleRemoveAnnotation = useCallback(
+    (measureIndex: number) => dispatch(removeAnnotation(measureIndex)),
+    [dispatch],
+  );
+  const handleMoveAnnotation = useCallback(
+    (from: number, to: number) => dispatch(moveAnnotation(from, to)),
+    [dispatch],
+  );
+  const consumePendingAnnotation = useCallback(
+    () => setPendingAnnotation(null),
+    [],
+  );
 
   // Selecting a bar **cues the play-start**: Play begins from the selected bar;
   // with nothing selected it plays from the top. We do this by seeking the
@@ -231,6 +313,8 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         onSetKey={(fifths, mode) => dispatch(setKeySignature(fifths, mode))}
         onTranspose={(semitones) => dispatch(transpose(semitones))}
         onSetTempo={(bpm) => dispatch(setTempo(bpm))}
+        onAddSection={handleAddSection}
+        onAddAnnotation={handleAddAnnotation}
       />
       {showBanner && (
         <Banner
@@ -251,6 +335,14 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         onSetChord={handleSetChord}
         onRemoveChord={handleRemoveChord}
         onPreviewChord={auditionSpec}
+        onEditSection={handleEditSection}
+        onRemoveSection={handleRemoveSection}
+        onMoveSection={handleMoveSection}
+        onEditAnnotation={handleEditAnnotation}
+        onRemoveAnnotation={handleRemoveAnnotation}
+        onMoveAnnotation={handleMoveAnnotation}
+        pendingAnnotation={pendingAnnotation}
+        onConsumePendingAnnotation={consumePendingAnnotation}
       />
       <Transport controls={transport} />
     </div>

@@ -7,7 +7,7 @@ In-browser MusicXML revision tool. See [`docs/musicxml-editor-prd.md`](./docs/mu
 1. **The model is the MusicXML DOM.** Parse once with `DOMParser`; OSMD is a _view_ re-rendered from the DOM. There is no second source of truth.
 2. **Patch, don't regenerate.** Every edit mutates only the specific nodes it touches. Unedited regions must serialize identically to the **normalized-on-load baseline** (a `DOMParser → XMLSerializer` round-trip normalizes the source, so fidelity is measured against that baseline, not the raw bytes; the XML declaration + DOCTYPE are preserved). This protects upstream data (Basic Pitch notes, stems metadata, etc.).
 3. **Every edit is a Command.** No component mutates the DOM directly. All mutations go through the command layer (PRD §7) so undo/redo and future features come for free.
-4. **Overlays anchor to logical positions, not pixels.** Section marks/annotations store `{measureIndex, beat}`, re-projected to screen coords on every render/resize.
+4. **Overlays anchor to logical positions, not pixels.** Section marks/annotations snap to a whole bar — keyed by `measureIndex` (one section + one annotation max per measure) — while chords anchor to a beat (`{measureIndex, entryIndex}`); all are re-projected to screen coords on every render/resize.
 5. **Keep it boring where it can be.** Add structural seams (command layer, load/save adapter) but no speculative features. Simplicity now, extensibility at the seams.
 
 ## Build order
