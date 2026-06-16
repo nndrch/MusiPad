@@ -23,7 +23,7 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 - **M7 — Sections, Annotations, Download + Print (shipped):** Standard MusicXML `<direction placement="above">` marks: boxed rehearsal-mark **Sections** (`<rehearsal enclosure="square">`) and free-text **Annotations** (`<words>`, tagged `data-musipad="annotation"`), one of each per bar (snap-to-bar); inline edit, drag-to-snap (move), remove, all undoable; rendered as HTML overlays (`MarkLayer`) stripped from the OSMD render clone. Plus the earlier **Download** (serialize → `.musicxml`, prolog preserved) and **Print** (`@media print`, score only). _M7 merged via [PR #15](https://github.com/nndrch/MusiPad/pull/15); latest shipped is now **M9** ([PR #17](https://github.com/nndrch/MusiPad/pull/17))._
 - **Live preview:** https://musipad.vercel.app (Vercel project `nndrchs-projects/musipad`; GitHub connected → pushes to `main` deploy production, branches/PRs get preview URLs).
 - **Planning:** a 3-milestone post-MVP re-weigh (CLAUDE.md rule 6) at M3 promoted three low-hanging items into milestones — **title subline → M4** (shipped), **bar-highlight playhead → M5**, **basic Print → M7**. During M5 scoping the human also pulled **auto-scroll → M5** (was post-MVP P3). A4 PDF generation stays post-MVP. The **M6 re-weigh (2026-06-08)** then promoted **meter / time-signature editing (P7) → new M8** — its own focused milestone after M7, so M7 stays tight — and renumbered **Polish → M9** (now **M12**, after the chord-chart pivot — see _Next direction_ above); everything else stays deferred (P9 note-audition and P10 lead-sheet-editor are product-direction/epic work, not MVP milestones).
-- **In flight:** **M12 — Export corrected MusicXML + retire Print** (PRD §9 M12) is next, followed by **M13** (audio-synced playback) and **M14** (root × quality picker); **M15 — Polish** is the final MVP pass. **M10** shipped via [PR #18](https://github.com/nndrch/MusiPad/pull/18), **M11** via [PR #19](https://github.com/nndrch/MusiPad/pull/19).
+- **In flight:** **M13 — Audio-synced review playback** (PRD §9 M13) is next, followed by **M14** (root × quality picker); **M15 — Polish** is the final MVP pass. **M12** shipped via [PR #21](https://github.com/nndrch/MusiPad/pull/21), **M11** via [PR #19](https://github.com/nndrch/MusiPad/pull/19).
 - **Captured requests / new post-MVP (2026-06-15):** the post-M8 feedback added **P15** (compound-meter felt-pulse slash grouping — the alternative to the chosen numerator slashes) and **P16** (authoring — create a chart from scratch / add bars). The earlier meter request was promoted to M8 (now shipped; **P7** is a promoted stub).
 - **Captured requests / reframe (2026-06-16, 2nd presentation):** drove the **audio-synced review layer** (M12–M15 above). New post-MVP entries: **P18** (auto-pair the WAV off the `_stabilised.wav` naming convention + read `.bpm`/`.json` sidecars), **P19** (waveform scrub / loop / count-in), **P20** (lead-in offset robustness / optional synth-voice re-introduction). The retired synth chord-realization (M2) is captured in **P3**; Print retirement is noted in **P4**.
 
@@ -46,7 +46,7 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 | M9  | Simplified chord-chart rendering (slashes + chords only)                | ✅ Done    | [#17](https://github.com/nndrch/MusiPad/pull/17)        | `19518d9`             |
 | M10 | A4 page layout + view toggle + print                                    | ✅ Done    | [#18](https://github.com/nndrch/MusiPad/pull/18)        | `87ff3dd`             |
 | M11 | Drag-to-reorder chords (snap to slashes; from P17)                       | ✅ Done    | [#19](https://github.com/nndrch/MusiPad/pull/19)        | `84da876`             |
-| M12 | Export corrected MusicXML + retire Print                                | ⏳ Planned | —                                                       | —                     |
+| M12 | Export corrected MusicXML + retire Print                                | ✅ Done    | [#21](https://github.com/nndrch/MusiPad/pull/21)        | `7ec6f48`             |
 | M13 | Audio-synced review playback (recording + metronome, bar follows)       | ⏳ Planned | —                                                       | —                     |
 | M14 | Chord picker: root × quality double dropdown                             | ⏳ Planned | —                                                       | —                     |
 | M15 | Polish (renumbered from M12)                                            | ⏳ Planned | —                                                       | —                     |
@@ -173,12 +173,13 @@ Lets a chord pill be **dragged onto another beat** — within a bar or across ba
 - **AC (PRD §9 M11):** ✅ drag a chord to another slash (same bar and across bars) → it moves and snaps; the `<harmony>` moves with it (persists in the DOM/download); click-to-edit still works (drag threshold); undo/redo reverts the move.
 - **Verified:** `eslint`/`tsc -b`/`vite build` clean; headless-Chrome drag pass on the A4 page-layout sample — within-bar move, across-bar move with overwrite, undo reverts, click-to-edit preserved, drop-target highlight + dragging-pill affordances render.
 
-### M12 ⏳ Planned — Export corrected MusicXML + retire Print
+### M12 — Export corrected MusicXML + retire Print ✅ ([PR #21](https://github.com/nndrch/MusiPad/pull/21))
 
 - **Why:** the revision layer's deliverable is the corrected `.musicxml`; Print isn't its job (2026-06-16 reframe). PRD §9 M12.
-- **Export:** flip on the already-built serialize→download (`serializeXml` + `LocalFileIO.save`, gated by `ENABLE_DOWNLOAD`); relabel **Download → Export**; topbar primary.
-- **Retire Print:** remove the Print button + unwire the handler; keep `PrintView`/`print.css` dormant (P4). Keep the Page/Full toggle.
+- **Export:** flipped on the already-built serialize→download (`serializeXml` + `LocalFileIO.save`, was gated by `ENABLE_DOWNLOAD`); relabeled **Download → Export**; topbar primary, always shown.
+- **Retire Print:** removed the Print button + `Printer` icon and unwired `PrintView`/`printRef`/`handlePrint` **and the `./print.css` import** (its `@media print` rules would otherwise blank the page on Cmd+P). `PrintView.tsx`/`print.css` kept dormant in the tree (P4). Page/Full toggle untouched.
 - **AC:** Export downloads the live DOM as `.musicxml` (declaration/DOCTYPE preserved); reopening shows edits, unedited bars byte-identical to baseline; Print gone; Page/Full intact.
+- **Shipped (2026-06-16):** headless-verified on both samples — Export preserves the prolog (decl + DOCTYPE on `chart.musicxml`; none on `leadsheet.musicxml`, matching source), Print absent, page visible under print media, no page errors; `lint` + `build` clean. `src/App.tsx`, `src/ui/Topbar.tsx`. _No longer planned._
 
 ### M13 ⏳ Planned — Audio-synced review playback
 
