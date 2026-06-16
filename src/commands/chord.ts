@@ -61,12 +61,53 @@ export function removeChordAt(
   );
 }
 
+/**
+ * Move the chord on one beat to another beat (M11) — within a bar or across
+ * bars. The whole `<harmony>` element is **relocated** (so its `kind/@text`,
+ * `inversion`, `degree`, `frame`, `@type` ride along — Invariant #2), snapped
+ * onto the target beat: a stale beat `<offset>` is dropped (it now sits exactly
+ * on that beat) and any chord already on the target is **overwritten**. The
+ * `<part>` is snapshotted for the inverse, since the move can touch two
+ * measures (cf. `MoveSection`). No-op when source and target resolve to the
+ * same beat (the caller also guards this, so no phantom undo step is created).
+ */
+export function moveChord(
+  fromMeasure: number,
+  fromNoteIndex: number,
+  toMeasure: number,
+  toNoteIndex: number,
+): Command {
+  return editElement(
+    `Move chord ${fromMeasure + 1}.${fromNoteIndex + 1} → ${toMeasure + 1}.${toNoteIndex + 1}`,
+    (doc) => doc.querySelector('part'),
+    (part) => {
+      const fromMeasureEl = nthMeasureIn(part, fromMeasure);
+      const toMeasureEl = nthMeasureIn(part, toMeasure);
+      if (!fromMeasureEl || !toMeasureEl) return;
+      const fromNote = nthSoundingNote(fromMeasureEl, fromNoteIndex);
+      const harmony = fromNote && attachedHarmony(fromNote);
+      if (!harmony) return;
+      const toNote = nthSoundingNote(toMeasureEl, toNoteIndex);
+      if (!toNote || toNote === fromNote) return;
+      // Overwrite an existing chord on the target, then relocate ours onto it.
+      // `before` moves the node out of its old measure, leaving that beat empty.
+      attachedHarmony(toNote)?.remove();
+      harmony.querySelector(':scope > offset')?.remove();
+      toNote.before(harmony);
+    },
+  );
+}
+
 // — measure / note location ————————————————————————————————————————————————
 
 /** The `measureIndex`-th `<measure>` of the primary part, or null. */
 function nthMeasure(doc: Document, measureIndex: number): Element | null {
   const part = doc.querySelector('part');
-  if (!part) return null;
+  return part ? nthMeasureIn(part, measureIndex) : null;
+}
+
+/** The `measureIndex`-th `<measure>` within a given `<part>` element. */
+function nthMeasureIn(part: Element, measureIndex: number): Element | null {
   return part.querySelectorAll(':scope > measure')[measureIndex] ?? null;
 }
 

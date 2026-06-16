@@ -44,6 +44,13 @@ interface OsmdViewProps {
   ) => void;
   /** Remove a chord at a beat (M6). */
   onRemoveChord: (measureIndex: number, entryIndex: number) => void;
+  /** Move a chord onto another beat, snapping to the nearest slash (M11). */
+  onMoveChord: (
+    fromMeasure: number,
+    fromEntry: number,
+    toMeasure: number,
+    toEntry: number,
+  ) => void;
   /** Audition a chord (the editor's Hear button, M6). */
   onPreviewChord: (spec: ChordSpec) => void;
   /** Section + annotation authoring (M7) — undoable commands. */
@@ -79,6 +86,7 @@ export function OsmdView({
   isPlaying,
   onSetChord,
   onRemoveChord,
+  onMoveChord,
   onPreviewChord,
   onEditSection,
   onRemoveSection,
@@ -217,6 +225,7 @@ export function OsmdView({
               isPlaying={isPlaying}
               onSetChord={onSetChord}
               onRemoveChord={onRemoveChord}
+              onMoveChord={onMoveChord}
               onPreview={onPreviewChord}
             />
             <MarkLayer

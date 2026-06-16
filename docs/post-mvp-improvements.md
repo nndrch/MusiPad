@@ -313,4 +313,4 @@ Let the user **drag a chord pill** onto another beat to move / reorder it, **sna
 - Dropping on an **occupied** slash: overwrite / swap / no-op — pick one (overwrite is simplest, matching the section upsert).
 - Keep it distinct from click-to-edit (drag threshold) and disabled while playing (the chart is display-only then), like the chord editor.
 
-**Promoted to a milestone — M11** (2026-06-15): scheduled as its own chord-editing milestone **after M10** (A4 pages), since it doesn't fit the rendering / pages milestones. Full scope + AC now live in [PRD §9 → M11](./musicxml-editor-prd.md) and [`roadmap.md`](./roadmap.md). _No longer deferred._
+**Promoted to a milestone — M11** (2026-06-15): scheduled as its own chord-editing milestone **after M10** (A4 pages), since it doesn't fit the rendering / pages milestones. Full scope + AC now live in [PRD §9 → M11](./musicxml-editor-prd.md) and [`roadmap.md`](./roadmap.md). **Shipped (M11, 2026-06-16)** — `moveChord` relocates the `<harmony>` element (overwrite-on-occupied, `<part>`-snapshot undo) and `ChordLayer` gained `MarkLayer`-style drag-to-snap with a 4px click/drag threshold. _No longer deferred._
