@@ -92,7 +92,9 @@ interface VFStave {
 }
 interface GMeasure {
   PositionAndShape: BBox;
-  ParentMusicSystem?: { PositionAndShape: BBox };
+  /** `Parent` is the `GraphicalMusicPage` the system sits on — used to map a
+   *  measure to its page in A4 page mode (M10), where coords reset per page. */
+  ParentMusicSystem?: { PositionAndShape: BBox; Parent?: object };
   staffEntries?: { PositionAndShape: BBox }[];
   /**
    * The rendered VexFlow stave (VexFlow backend). Its line geometry is the
@@ -170,26 +172,112 @@ function staffLinesPx(
 }
 
 /**
+ * Map each OSMD `GraphicalMusicPage` object → its 0-based index, so a measure's
+ * `ParentMusicSystem.Parent` (the page it lives on) resolves to a page number.
+ * Continuous (`Endless`) mode has a single page; A4 page mode (M10) lays the
+ * score onto N pages, each rendered as its own `<svg>` with **page-local**
+ * coordinates (they reset to ~0 at every page top).
+ */
+function pageIndexMap(osmd: OpenSheetMusicDisplay): Map<object, number> {
+  const pages = (osmd.GraphicSheet?.MusicPages ?? []) as object[];
+  const map = new Map<object, number>();
+  pages.forEach((p, i) => map.set(p, i));
+  return map;
+}
+
+/**
+ * The unscaled top offset (px) of each rendered page, relative to the first
+ * page's top. OSMD emits one `<svg>` per page (M10), each wrapped in a
+ * positioned `<div>` (`osmdCanvasPageN`); the measure coordinates are
+ * page-local (reset per page), so the overlay adds its page's offset here to
+ * land in one unified coordinate space.
+ *
+ * We read the **wrapper div's** `offsetTop` (a real HTMLElement — `<svg>`
+ * doesn't expose `offsetTop`) relative to the first page. These are layout
+ * values, so they're immune to the `.osmd-scale` transform AND automatically
+ * include whatever inter-sheet gap the CSS adds (no constant to keep in sync).
+ * Continuous mode = one page = `[0]`.
+ */
+function pageTops(svgs: SVGElement[]): number[] {
+  if (svgs.length === 0) return [];
+  const wrappers = svgs.map((s) => s.parentElement as HTMLElement | null);
+  const base = wrappers[0]?.offsetTop ?? 0;
+  return wrappers.map((w) => (w?.offsetTop ?? 0) - base);
+}
+
+/** The page index a measure sits on (0 when unknown / single-page). */
+function pageOfMeasure(gm: GMeasure, pageOf: Map<object, number>): number {
+  const page = gm.ParentMusicSystem?.Parent;
+  return (page && pageOf.get(page)) ?? 0;
+}
+
+/** A rendered A4 page's rectangle, in `.osmd-scale` (unscaled) coordinates. */
+export interface PageRect {
+  index: number;
+  /** Top / left of the sheet relative to `.osmd-scale` (the decorations' box). */
+  top: number;
+  left: number;
+  /** Sheet width / height in px (intrinsic SVG size; A4 portrait in page mode). */
+  width: number;
+  height: number;
+}
+
+/**
+ * One rect per rendered page `<svg>` (M10) — used by `OsmdView` to drop the
+ * page-1 header and per-page page numbers onto the right sheet. Coordinates are
+ * in the same `.osmd-scale` space the decorations are positioned in: the host's
+ * content-box origin (its offset within `.osmd-scale`, plus padding) plus each
+ * page's `pageTops` offset. Continuous mode returns one rect; empty before the
+ * first render.
+ */
+export function computePageRects(host: HTMLElement | null): PageRect[] {
+  if (!host) return [];
+  const svgs = [...host.querySelectorAll('svg')] as SVGElement[];
+  const tops = pageTops(svgs);
+  const cs = getComputedStyle(host);
+  const originTop =
+    host.offsetTop + host.clientTop + (Number.parseFloat(cs.paddingTop) || 0);
+  const originLeft =
+    host.offsetLeft + host.clientLeft + (Number.parseFloat(cs.paddingLeft) || 0);
+  return svgs.map((svg, i) => ({
+    index: i,
+    top: originTop + tops[i],
+    left: originLeft,
+    width: svg.clientWidth,
+    height: svg.clientHeight,
+  }));
+}
+
+/**
  * One rectangle per measure (document order). Horizontal extent comes from the
  * measure's own box; vertical extent from its parent music system, so every bar
  * on a line shares one clean band that includes the chord-symbol row above the
- * staff. Returns `[]` before the first successful render.
+ * staff. In A4 page mode each measure's page offset is added to every y so all
+ * pages share one coordinate space (M10). Returns `[]` before the first
+ * successful render.
  */
 export function computeMeasureBoxes(
   osmd: OpenSheetMusicDisplay,
-  svg: SVGElement | null,
+  host: HTMLElement | null,
 ): MeasureBox[] {
   const measureList = osmd.GraphicSheet?.MeasureList as
     | GMeasure[][]
     | undefined;
   if (!measureList || measureList.length === 0) return [];
 
-  const k = pxPerUnit(osmd, svg);
+  const svgs = host
+    ? ([...host.querySelectorAll('svg')] as SVGElement[])
+    : [];
+  const k = pxPerUnit(osmd, svgs[0] ?? null);
+  const tops = pageTops(svgs);
+  const pageOf = pageIndexMap(osmd);
   const boxes: MeasureBox[] = [];
 
   for (let mi = 0; mi < measureList.length; mi++) {
     const gm = measureList[mi]?.[0]; // first staff of this measure
     if (!gm?.PositionAndShape) continue;
+
+    const dy = tops[pageOfMeasure(gm, pageOf)] ?? 0;
 
     const { left, width } = boxLeftWidth(gm.PositionAndShape);
     // Prefer the system band (uniform height per line, covers chords above the
@@ -205,12 +293,12 @@ export function computeMeasureBoxes(
     boxes.push({
       measureIndex: mi,
       x: left * k,
-      y: top * k,
+      y: top * k + dy,
       width: width * k,
       height: height * k,
-      staffTopY: sl ? sl.top : own.top * k,
-      staffMidY: sl ? sl.mid : ((own.top + ownBottom) / 2) * k,
-      staffBottomY: sl ? sl.bottom : ownBottom * k,
+      staffTopY: (sl ? sl.top : own.top * k) + dy,
+      staffMidY: (sl ? sl.mid : ((own.top + ownBottom) / 2) * k) + dy,
+      staffBottomY: (sl ? sl.bottom : ownBottom * k) + dy,
     });
   }
 
@@ -228,14 +316,19 @@ export function computeMeasureBoxes(
  */
 export function computeStaffEntries(
   osmd: OpenSheetMusicDisplay,
-  svg: SVGElement | null,
+  host: HTMLElement | null,
 ): StaffEntryAnchor[] {
   const measureList = osmd.GraphicSheet?.MeasureList as
     | GMeasure[][]
     | undefined;
   if (!measureList || measureList.length === 0) return [];
 
-  const k = pxPerUnit(osmd, svg);
+  const svgs = host
+    ? ([...host.querySelectorAll('svg')] as SVGElement[])
+    : [];
+  const k = pxPerUnit(osmd, svgs[0] ?? null);
+  const tops = pageTops(svgs);
+  const pageOf = pageIndexMap(osmd);
 
   // Pass 1 — the chord row for each system (= the highest measure-box top on
   // the line). A bar with a chord has its box top raised to include the chord
@@ -256,6 +349,7 @@ export function computeStaffEntries(
   for (let mi = 0; mi < measureList.length; mi++) {
     const gm = measureList[mi]?.[0];
     if (!gm?.PositionAndShape) continue;
+    const dy = tops[pageOfMeasure(gm, pageOf)] ?? 0;
     const ownTop = boxTopHeight(gm.PositionAndShape).top;
     const sys = gm.ParentMusicSystem;
     const rowTop = (sys && systemRowTop.get(sys)) ?? ownTop;
@@ -276,9 +370,9 @@ export function computeStaffEntries(
         measureIndex: mi,
         entryIndex: ei,
         x: bb.AbsolutePosition.x * k,
-        y: midY,
-        chordRowY: rowTop * k,
-        slotBottomY: bottom * k,
+        y: midY + dy,
+        chordRowY: rowTop * k + dy,
+        slotBottomY: bottom * k + dy,
       });
     }
   }

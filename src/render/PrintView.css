@@ -1,0 +1,44 @@
+/*
+ * PrintView (M10). On screen the whole thing lives OFF-SCREEN (not display:none,
+ * so VexFlow can measure text during `prepare()`); only `@media print` (see
+ * print.css) brings it on-page. These rules cover the on-screen/off-screen
+ * geometry and the sheet structure shared by both states.
+ */
+.print-root {
+  position: absolute;
+  left: -100000px;
+  top: 0;
+  width: 1100px; /* PRINT_WIDTH — the A4 render's layout width */
+}
+
+.print-sheet {
+  position: relative;
+}
+
+.print-sheet__svg svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Document header on sheet 1 + page numbers on later sheets sit in the page
+ * margins (where OSMD draws no staff), absolutely positioned within the sheet. */
+.print-sheet__header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6mm 12mm 0;
+}
+
+.print-sheet__number {
+  position: absolute;
+  bottom: 5mm;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-muted);
+}

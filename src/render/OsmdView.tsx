@@ -7,16 +7,22 @@ import { ChordLayer } from '../overlay/ChordLayer';
 import { SlashLayer } from '../overlay/SlashLayer';
 import { MarkLayer } from '../overlay/MarkLayer';
 import { ScoreHeader } from './ScoreHeader';
-import { NATURAL_WIDTH, useOsmd } from './useOsmd';
+import { NATURAL_WIDTH, useOsmd, type ViewMode } from './useOsmd';
+import { computePageRects, type PageRect } from '../overlay/projector';
 import './OsmdView.css';
 
 /** Stable no-op for the section layer's (unused) pending-edit callback. */
 const NO_PENDING_EDIT = () => {};
 
+/** Height (unscaled px) of a later-sheet page-number band in page mode (M10). */
+const SHEET_FOOTER_H = 40;
+
 interface OsmdViewProps {
   doc: Document;
   /** Title + Key·Tempo·Feel for the HTML header (M4). */
   info: ScoreInfo;
+  /** Continuous (`full`) vs paginated A4 (`page`) layout (M10, PRD §6.6). */
+  viewMode: ViewMode;
   /** Fires after each successful render with the OSMD instance (M2 playback). */
   onRendered?: (osmd: OpenSheetMusicDisplay) => void;
   /** Bumps when a command edits the DOM in place — triggers a re-render (M3). */
@@ -63,6 +69,7 @@ interface OsmdViewProps {
 export function OsmdView({
   doc,
   info,
+  viewMode,
   onRendered,
   revision,
   selectedMeasure,
@@ -98,6 +105,7 @@ export function OsmdView({
     doc,
     handleRendered,
     revision,
+    viewMode,
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -105,6 +113,16 @@ export function OsmdView({
   const [naturalHeight, setNaturalHeight] = useState(0);
   // A4 floor for the sheet: a short chart still reads as a full page.
   const [paperMinHeight, setPaperMinHeight] = useState(0);
+  // Per-page sheet rectangles (page mode, M10) — for the page-1 header band and
+  // later-page page numbers. Recomputed after each OSMD render; the sizes are
+  // intrinsic (unscaled), so they don't change on viewport resize.
+  const [pageRects, setPageRects] = useState<PageRect[]>([]);
+  useEffect(() => {
+    setPageRects(
+      viewMode === 'page' ? computePageRects(containerRef.current) : [],
+    );
+  }, [renderSignal, viewMode, containerRef]);
+  const isPaged = viewMode === 'page';
 
   // Scale factor follows the page's available (content-box) width. The rAF defers
   // the state write out of the observer callback so a width→height→scrollbar→width
@@ -148,15 +166,19 @@ export function OsmdView({
   return (
     // Clicking the desk (anywhere not a bar) clears the selection (B5.3).
     <div
-      className="osmd-scroll"
+      className={`osmd-scroll${isPaged ? ' osmd-scroll--page' : ''}`}
       ref={scrollRef}
       onClick={() => onSelectMeasure(null)}
     >
-      {/* One white "paper": the document header (title + subline) sits on the
-          same sheet as the score, unscaled, with the zoom-to-fit score below.
-          `minHeight` holds A4 proportions so a short chart still looks like a page. */}
-      <div className="osmd-paper" style={{ minHeight: paperMinHeight }}>
-        <ScoreHeader info={info} />
+      {/* The "paper". In `full` mode the document header (title + subline) sits
+          above the continuous, zoom-to-fit score. In `page` mode (M10) the score
+          is a column of A4 sheets and the header is drawn *on* sheet 1 (below),
+          so it's omitted here. `minHeight` holds A4 proportions for a short chart. */}
+      <div
+        className="osmd-paper"
+        style={isPaged ? undefined : { minHeight: paperMinHeight }}
+      >
+        {!isPaged && <ScoreHeader info={info} />}
         <div
           ref={pageRef}
           className="osmd-page"
@@ -227,6 +249,36 @@ export function OsmdView({
               pendingEdit={pendingAnnotation}
               onPendingEditConsumed={onConsumePendingAnnotation}
             />
+            {/* Page-layout chrome (M10): the document header on sheet 1, and a
+                page number on every later sheet. Absolutely positioned in the
+                same unscaled space as the overlays (so they ride the zoom
+                transform), placed in each sheet's top / bottom margin where no
+                staff is drawn. */}
+            {isPaged &&
+              pageRects.map((rect) =>
+                rect.index === 0 ? (
+                  <div
+                    key="page-header"
+                    className="osmd-sheet-header"
+                    style={{ top: rect.top, left: rect.left, width: rect.width }}
+                  >
+                    <ScoreHeader info={info} />
+                  </div>
+                ) : (
+                  <div
+                    key={`page-num-${rect.index}`}
+                    className="osmd-sheet-number"
+                    style={{
+                      top: rect.top + rect.height - SHEET_FOOTER_H,
+                      left: rect.left,
+                      width: rect.width,
+                      height: SHEET_FOOTER_H,
+                    }}
+                  >
+                    Page {rect.index + 1}
+                  </div>
+                ),
+              )}
           </div>
           {status === 'rendering' && (
             <div className="osmd-status">Rendering score…</div>

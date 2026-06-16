@@ -375,7 +375,7 @@ Add the **page-layout** view of §6.6 and the **page-layout ↔ fullscreen** tog
 - Paginated **A4** render via a hidden second OSMD at `pageFormat: 'A4_P'` (the **P4** foundation): A4 portrait sheets, **4 bars/row** fixed, page breaks **between systems only**. **Page 1** header (title + Key · Tempo); later pages a **page number** only.
 - Topbar **view toggle** (Page ▾ / Full). Fullscreen = the existing continuous zoom-to-fit scroll. Editing interactions and overlay projection work in **both** modes.
 - **Print** (M7) now reproduces the A4 page layout cleanly — multi-page, **no mid-system clipping** — closing the M7 known limitation. A downloadable **A4 PDF** stays in **P4**.
-- **AC:** The toggle switches between A4 pages and continuous scroll; a multi-system chart paginates onto multiple A4 sheets with breaks between systems (no clipped bars); 4 bars/row; page 1 shows the header, later pages a page number; Print outputs the clean paginated A4; all edits still work in page-layout mode; unedited bars byte-identical to the load baseline.
+- **AC:** The toggle switches between A4 pages and continuous scroll; a multi-system chart paginates onto multiple A4 sheets with breaks between systems (no clipped bars); 4 bars/row; page 1 shows the header, later pages a page number; Print outputs the clean paginated A4; all edits still work in page-layout mode; unedited bars byte-identical to the load baseline. ✅ **Met (M10).** _(Deferred: exact Berklee chord-symbol parity on print — OSMD ignores `<kind text>`, so print uses its house style; see [`post-mvp-improvements.md`](./post-mvp-improvements.md) P4. A4 **PDF download** stays P4.)_
 
 ### M11 — Drag-to-reorder chords (snap to slashes)
 

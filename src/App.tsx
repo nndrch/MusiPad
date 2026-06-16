@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import { LocalFileIO } from './io/LocalFileIO';
 import type { ScoreIO } from './io/ScoreIO';
@@ -11,6 +11,8 @@ import {
 import { applySlashGrid } from './model/slashGrid';
 import { readScoreInfo } from './model/scoreInfo';
 import { OsmdView } from './render/OsmdView';
+import type { ViewMode } from './render/useOsmd';
+import { PrintView, type PrintHandle } from './render/PrintView';
 import { Transport } from './audio/Transport';
 import { useTransport } from './audio/useTransport';
 import { useScoreEditor } from './store/useScoreEditor';
@@ -194,7 +196,19 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
   const handleDownload = useCallback(() => {
     void io.save(serializeXml(doc));
   }, [io, doc]);
-  const handlePrint = useCallback(() => window.print(), []);
+  // Print (M10): render the dedicated off-screen A4 pages, then open the print
+  // dialog. OSMD's async load can't be awaited inside `beforeprint`, so we
+  // prepare first (PrintView captures the paginated sheets) and only then print
+  // — clean multi-page A4 with no mid-system clipping (replaces the M7 CSS fit).
+  const printRef = useRef<PrintHandle>(null);
+  const handlePrint = useCallback(async () => {
+    await printRef.current?.prepare();
+    window.print();
+  }, []);
+
+  // View mode (M10, PRD §6.6): paginated A4 pages vs continuous scroll.
+  // Defaults to page layout (the print-friendly showcase); toggled in the topbar.
+  const [viewMode, setViewMode] = useState<ViewMode>('page');
 
   // Bar selection (M5) — ephemeral *view* state, not a Command (Invariant #3
   // governs DOM mutations; selection touches neither the DOM nor undo/redo).
@@ -326,6 +340,8 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         onDownload={handleDownload}
         showDownload={ENABLE_DOWNLOAD}
         onPrint={handlePrint}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
         onClose={onClose}
       />
       <Toolbar
@@ -346,6 +362,7 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
       <OsmdView
         doc={doc}
         info={info}
+        viewMode={viewMode}
         onRendered={handleRendered}
         revision={revision}
         selectedMeasure={selectedMeasure}
@@ -365,6 +382,8 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         pendingAnnotation={pendingAnnotation}
         onConsumePendingAnnotation={consumePendingAnnotation}
       />
+      {/* Off-screen paginated A4 render used by Print (M10); portals to body. */}
+      <PrintView ref={printRef} doc={doc} info={info} />
       {ENABLE_PLAYBACK && <Transport controls={transport} />}
     </div>
   );

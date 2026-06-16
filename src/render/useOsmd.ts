@@ -8,6 +8,22 @@ import { applySlashGrid } from '../model/slashGrid';
 
 export type OsmdStatus = 'empty' | 'rendering' | 'ready' | 'error';
 
+/**
+ * Which on-screen layout OSMD lays the score out in (M10, PRD §6.6):
+ *   • `'full'` — one continuous zoom-to-fit page (OSMD `Endless`), today's view.
+ *   • `'page'` — paginated A4 portrait sheets (OSMD `A4_P`), 4 bars/row, page
+ *     breaks between systems only.
+ * The toggle just changes OSMD's page format and re-renders; the editable DOM
+ * and every overlay are identical in both (the projector is page-aware).
+ */
+export type ViewMode = 'full' | 'page';
+
+/** Maps a view mode to the OSMD page-format id passed to `setPageFormat`. */
+const PAGE_FORMAT: Record<ViewMode, string> = {
+  full: 'Endless',
+  page: 'A4_P',
+};
+
 interface UseOsmdResult {
   /** Attach to the container div OSMD draws into. */
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -160,6 +176,7 @@ export function useOsmd(
   doc: Document | null,
   onRendered?: (osmd: OpenSheetMusicDisplay) => void,
   revision = 0,
+  viewMode: ViewMode = 'full',
 ): UseOsmdResult {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
@@ -198,6 +215,15 @@ export function useOsmd(
     }
 
     let cancelled = false;
+    // M10: lay the score out either continuous (`Endless`) or paginated A4
+    // (`A4_P`). `setPageFormat` only flips the rule + flags a backend rebuild
+    // (no render of its own), so the following load+render picks it up.
+    osmd.setPageFormat(PAGE_FORMAT[viewMode]);
+    // Page mode draws the title + Key·Tempo header on sheet 1, in the page's top
+    // margin, so the first system needs extra headroom to clear it; continuous
+    // mode renders that header as HTML above the score and keeps the tighter
+    // top margin (M7 marks headroom). Set per render so toggling updates it.
+    osmd.EngravingRules.PageTopMargin = viewMode === 'page' ? 16 : 9;
     osmd
       .load(buildRenderDoc(doc))
       .then(() => {
@@ -218,7 +244,7 @@ export function useOsmd(
     return () => {
       cancelled = true;
     };
-  }, [doc, revision]);
+  }, [doc, revision, viewMode]);
 
   const error = failure && failure.doc === doc ? failure.message : null;
   const status: OsmdStatus = !doc
