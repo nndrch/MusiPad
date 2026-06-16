@@ -1,6 +1,6 @@
 # Post-MVP improvements
 
-A parking lot for work to pick up **after** the PoC/MVP milestones (PRD §9, M0–M12) are complete. These are deliberately out of scope for the MVP — captured here so they aren't lost. Not prioritized; not committed to a milestone.
+A parking lot for work to pick up **after** the PoC/MVP milestones (PRD §9, M0–M15) are complete. These are deliberately out of scope for the MVP — captured here so they aren't lost. Not prioritized; not committed to a milestone.
 
 ---
 
@@ -55,6 +55,11 @@ Build on the M2 chord-chart playback engine ([`src/audio/`](../src/audio/)). The
 - **Selectable instrument / synth voice** — let the user pick the playback timbre (piano, acoustic guitar, electric guitar, electric piano, organ, …) instead of the single built-in oscillator tone. The MVP deliberately uses a self-contained Web Audio oscillator synth (zero-dependency, offline, deterministic — see [`synth.ts`](../src/audio/synth.ts)); this swaps in sampled/soundfont instruments behind the same `Synth` interface, with a picker in the transport. (A guitar voice could also motivate strummed/arpeggiated voicings rather than block chords.)
 - **Mute the chord MIDI, keep the metronome — a play-along / rehearse mode.** A transport toggle that silences the realized chord audio but keeps the metronome clicking (and the M5 bar-highlight advancing). The musician plays along on their own instrument, reading the chart while the current bar highlights and the click keeps time — ideal for rehearsal. The transport already separates the two audio paths (chord scheduling vs `metronome` clicks in [`player.ts`](../src/audio/player.ts)) and the metronome toggle exists, so this is a "mute chords" switch alongside it (e.g. skip `synth.playChord` while the look-ahead loop and click scheduling run unchanged). Pairs naturally with the instrument picker above.
 
+**Update (M13, 2026-06-16):** the audio-review reframe **supersedes synth chord playback for the transport** — M13 plays the **real stabilised recording** (PRD §6.7), so the transport no longer realizes `<harmony>` through the synth. Knock-on effects for this entry:
+
+- The **play-along / rehearse mode** above is now effectively the **default**: the transport plays the recording with the metronome and bar-highlight following — exactly the rehearse experience. A residual "mute the recording, metronome-only" toggle is the only leftover nicety.
+- The **instrument / synth voice** picker only applies if a **synthesized voice is re-introduced** alongside the recording (e.g. to audition a corrected chord against the track) — see **P20**. The synth itself survives only for the metronome click and the editor's Hear audition.
+
 **Promoted to a milestone** (no longer deferred):
 
 - the **full-bar playhead highlight → M5** — the entire current measure is highlighted (a soft orange `--accent-tint` wash) during playback instead of the thin-line cursor (which M5 removes), driven by the transport's `currentMeasure` and reusing M5's overlay machinery.
@@ -76,6 +81,8 @@ True client-side **PDF export in A4 format** — a downloadable, paginated PDF o
 >
 > - **Exact Berklee chord-symbol parity on print.** The screen draws our own HTML pills (`Dmi7`, `CMaj7`); the print pages let OSMD ink the chords, and OSMD **ignores the MusicXML `<kind text>` override** (verified), so printed symbols use OSMD's house style (`Dm7`, `Cmaj7`). To match the pills, set OSMD's chord labels on the print instance via `EngravingRules.setChordSymbolLabelText(ChordSymbolEnum.x, 'Maj7' | 'mi' | …)` — a kind-value → `ChordSymbolEnum` → Berklee-label table (the labels already exist in [`model/chordSymbol`](../src/model/chordSymbol.ts) `qualityLabel`). Small, self-contained; cut from M10 to keep scope tight.
 > - **Print slash style.** Print shows OSMD's slash **noteheads (with stems)**; the screen shows our minimal single-stroke `SlashLayer`. A print-only minimal-slash pass (or hiding stems + overlaying) could match them, but the engraved slash reads fine on paper.
+>
+> **Update (M12, 2026-06-16):** **Print is retired from the UI** in M12. The audio-review reframe (PRD §1) makes the corrected MusicXML (**Export**) the sole deliverable, and printing isn't this tool's job (PRD §3). `PrintView`/`print.css` stay in the tree but **dormant** (unwired from the topbar), so this P4 work — the downloadable **A4 PDF** — can still build on their off-screen `A4_P` page SVGs when picked up. The two parity items above (Berklee labels, slash stems) now apply to the **PDF**, not a live Print.
 
 **Scope / ideas:**
 
@@ -99,7 +106,7 @@ M7's Print is a CSS-only `@media print` that fits the single continuous OSMD SVG
 - Title/subline header: either let OSMD draw the title (`drawTitle: true`) or render a first-page HTML band scaled to leave room (an A4-sized page SVG + an HTML header on the same sheet overflow — needs tuning).
 - For PDF: feed the same paginated SVGs to `svg2pdf.js` + `jsPDF` at A4 dimensions.
 
-**Why deferred:** The MVP's output of record is the corrected `.musicxml` (M7), and a quick Print covers paper output; a pixel-faithful A4 PDF generator (new deps, pagination) is a heavier convenience layered on top. The paginated re-render above is the shared core for both the PDF generator and a clip-free Print. **(M10 builds that paginated re-render for the on-screen page view + clean Print; P4 then feeds the same paginated SVGs to svg2pdf/jsPDF for a downloadable file.)**
+**Why deferred:** The MVP's output of record is the corrected `.musicxml` (Export, M7/M12); a pixel-faithful A4 PDF generator (new deps, pagination) is a heavier convenience layered on top. The paginated re-render is the shared core. **(M10 built that paginated re-render for the on-screen page view; Print was retired from the UI in M12 — §3 — so P4 is now purely the downloadable PDF, feeding the same off-screen `A4_P` SVGs to svg2pdf/jsPDF.)**
 
 ---
 
@@ -158,13 +165,13 @@ Today only **chords** sound — the harmonic rhythm realized as block voicings (
 - **Click-to-audition a note** _(low-hanging)_ — click/select a notehead → hear that single pitch, mirroring the M6 chord audition. Nearly all the machinery already exists: a note is just a one-element chord, so [`previewChord([midi])`](../src/audio/player.ts) already sounds it; [`computeStaffEntries`](../src/overlay/projector.ts) already emits clickable per-notehead anchors and [`ChordLayer`](../src/overlay/ChordLayer.tsx) mounts hit-zones over them; [`nthSoundingNote`](../src/commands/chord.ts) resolves `(measureIndex, noteIndex) → <note>`; and [`voicing.ts`](../src/audio/voicing.ts) already has the step/octave/alter→MIDI conversion. The **only missing code** is a ~20-line `<note>` → MIDI reader plus one branch in the existing click handler. Estimate: ~half a day + QA. Caveat: a no-op on pure slash/`<unpitched>` placeholders — only meaningful for notes carrying a real `<pitch>`.
 - **Transport plays the melody line** _(larger)_ — sound the written note line alongside the chord regions during playback. This **reverses the documented chord-chart reading** (slashes keep time but don't articulate; placeholder pitches are never played), so it needs a **PRD decision** before any code, plus schedule/playback changes to emit and sound per-note pitch events.
 
-**Why deferred:** Beyond the MVP milestone scope (M0–M12) and the chord-chart premise the engine is built on. Captured so the (surprisingly small) audition path and the bigger melody-playback question aren't lost. Surfaced when the chord-preview-cutoff fix was being closed out.
+**Why deferred:** Beyond the MVP milestone scope (M0–M15) and the chord-chart premise the engine is built on. Captured so the (surprisingly small) audition path and the bigger melody-playback question aren't lost. Surfaced when the chord-preview-cutoff fix was being closed out.
 
 ---
 
 ## P10 — Evolve into a full lead-sheet editor (melody/note editing)
 
-> **This is an epic / north-star, not a single deferred refinement.** It changes the product's identity — from a **chord-chart corrector** (fix the chords over a fixed slash grid; PRD §3, §8) into a **lead-sheet authoring tool** where the user also writes and edits the **melody** itself. It therefore needs a **product-level decision and its own PRD track** (a milestone series beyond M0–M12), not just a slot in an existing milestone. P9 (note playback) is the first, smallest step on this path; this entry is the whole arc. _(Requested 2026-06-08.)_
+> **This is an epic / north-star, not a single deferred refinement.** It changes the product's identity — from a **chord-chart corrector** (fix the chords over a fixed slash grid; PRD §3, §8) into a **lead-sheet authoring tool** where the user also writes and edits the **melody** itself. It therefore needs a **product-level decision and its own PRD track** (a milestone series beyond M0–M15), not just a slot in an existing milestone. P9 (note playback) is the first, smallest step on this path; this entry is the whole arc. _(Requested 2026-06-08.)_
 
 A lead sheet is **melody (pitched notes + rhythm) + chord symbols (+ optionally lyrics)**. MusiPad already owns the chord-symbol half (M6) and renders/round-trips real notation; what's missing is **editing the notes**: their pitch, their rhythm, and adding/removing them.
 
@@ -205,7 +212,7 @@ The MVP's structural seams (Invariant #5) were built for exactly this kind of ex
 
 **Related:** **P9** (note playback — the first step), **P8** (enharmonic respell / `enharmonicAlternatives`, reused for pitch respell), **P7** (meter editing — shares the beat-math/`divisions` model the reflow engine needs), **P3** (instruments / play-along mute for a melody+chords mix), **P2** (lead-sheet conventions & road map).
 
-**Why deferred:** A deliberate expansion of the product's mission well beyond the PoC/MVP (M0–M12), which proves the chord-chart *correction* loop. Recorded here as the intended evolution path so the architecture decisions made for the MVP (DOM-as-truth, command layer, per-item overlay projection) are understood as the foundation this builds on — and so the hard part (rhythm reflow) is flagged before anyone assumes "it's just chord editing for notes."
+**Why deferred:** A deliberate expansion of the product's mission well beyond the PoC/MVP (M0–M15), which proves the chord-chart *correction* loop. Recorded here as the intended evolution path so the architecture decisions made for the MVP (DOM-as-truth, command layer, per-item overlay projection) are understood as the foundation this builds on — and so the hard part (rhythm reflow) is flagged before anyone assumes "it's just chord editing for notes."
 
 ---
 
@@ -314,3 +321,48 @@ Let the user **drag a chord pill** onto another beat to move / reorder it, **sna
 - Keep it distinct from click-to-edit (drag threshold) and disabled while playing (the chart is display-only then), like the chord editor.
 
 **Promoted to a milestone — M11** (2026-06-15): scheduled as its own chord-editing milestone **after M10** (A4 pages), since it doesn't fit the rendering / pages milestones. Full scope + AC now live in [PRD §9 → M11](./musicxml-editor-prd.md) and [`roadmap.md`](./roadmap.md). **Shipped (M11, 2026-06-16)** — `moveChord` relocates the `<harmony>` element (overwrite-on-occupied, `<part>`-snapshot undo) and `ChordLayer` gained `MarkLayer`-style drag-to-snap with a 4px click/drag threshold. _No longer deferred._
+
+---
+
+## P18 — Auto-pair the recording (naming convention + sidecars)
+
+_Captured 2026-06-16 (2nd-presentation reframe). The deferred half of M13's "Load audio."_
+
+M13 loads the recording by an explicit **Load audio** button (PRD §6.7). The upstream Session Materials Creator writes a fixed naming convention — `<base>_chord_chart.musicxml` ↔ `<base>_stabilised.wav`, plus a `<base>_stabilised.wav.bpm` and `<base>_chord_chart.json` — so the pairing _could_ be automatic.
+
+**Scope / ideas:**
+
+- **Folder open** (File System Access API, `showDirectoryPicker`) or a dual drag-drop that grabs the chart + its matching `_stabilised.wav` by naming convention in one step. Chrome-only; behind a capability check.
+- Read the **`.bpm` sidecar** to confirm/seed the audio tempo, and the **`.json`** (key / meter / `sections` with `start_bar`/`end_bar`/`start_time`) to cross-check the chart or pre-seed the alignment offset.
+- Validate the pair (same base name; warn on mismatch).
+
+**Why deferred:** a browser can't silently read the sibling WAV; manual load is the simplest robust MVP (PRD §3). Folder access + sidecar parsing is a convenience layered on top, and Chrome-only.
+
+---
+
+## P19 — Audio transport extras: waveform, loop, count-in
+
+_Captured 2026-06-16. Extras beyond M13's play / pause / seek / metronome._
+
+**Scope / ideas:**
+
+- **Waveform** strip under the transport for visual scrubbing and seeing section boundaries against the audio.
+- **Loop region** (A–B) to repeat a passage while correcting its chords.
+- **Count-in** (one bar of metronome before playback) and an adjustable **metronome volume**.
+- Optional **"mute the recording, metronome-only"** toggle (the residual of P3's rehearse mode).
+
+**Why deferred:** the MVP review loop needs only play / pause / seek-by-bar / metronome (PRD §6.7); these are refinements once the core follow-along proves out.
+
+---
+
+## P20 — Audio alignment robustness + optional synth voice
+
+_Captured 2026-06-16. Hardening the M13 sync, and a possible return of synthesized sound._
+
+**Scope / ideas:**
+
+- **Lead-in robustness.** M13 absorbs the WAV's fixed lead-in (the pipeline trims "one bar before beat 1", and `--no-trim-intro` changes it) with a single `audioOffset` + nudge. Harden this: auto-detect the offset from the first downbeat, persist a per-file nudge, handle `--no-trim-intro` exports, and surface a clear "out of sync? nudge here" affordance.
+- **Multi-tempo / `--allow-tempo-change` exports.** The pipeline aborts on multi-tempo songs today, so M13 assumes constant tempo. If variable-tempo exports ever ship, the bar↔time map (`schedule.ts` already reads every `<sound tempo>`) must be reconciled with the audio warp.
+- **Optional synth voice over the recording.** Re-introduce the retired synth chord realization (M2) as an _optional_ layer — e.g. to audition a corrected chord _against_ the track, or play-along when no recording is loaded. The synth still exists for the metronome + editor audition, so this is a re-wiring, not new audio code. (See **P3**.)
+
+**Why deferred:** the constant-tempo, single-offset case (with a manual nudge) covers the real pipeline output; the rest is hardening for edge exports and an optional enhancement.
