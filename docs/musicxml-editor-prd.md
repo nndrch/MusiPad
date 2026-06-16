@@ -384,7 +384,7 @@ Promoted from post-MVP **P17** (requested 2026-06-15) — scheduled after M10. L
 - Add drag handlers to the chord pills (§6.3, `ChordLayer`), cloning `MarkLayer`'s pointer-down/move/up → highlight-target → drop flow; a drag threshold separates a drag from the existing click-to-edit.
 - Snap the drop to the nearest beat anchor `{measureIndex, entryIndex}` from the M9 slash grid (the projector already emits one anchor per beat); an off-beat `<harmony>` `offset` snaps to the nearest beat.
 - New `moveChord(fromMeasure, fromEntry, toMeasure, toEntry)` — remove-then-set over `setChordAt` / `removeChordAt`, so it's undoable; dropping on an occupied slash overwrites (matches the section upsert).
-- **AC:** Drag a chord to another slash (same bar and across bars) → it moves and snaps to that beat; the `<harmony>` moves with it and survives download; click-to-edit still works (drag threshold); undo/redo reverts the move.
+- **AC:** Drag a chord to another slash (same bar and across bars) → it moves and snaps to that beat; the `<harmony>` moves with it and survives download; click-to-edit still works (drag threshold); undo/redo reverts the move. ✅ **Met (M11).**
 
 ### M12 — Polish
 

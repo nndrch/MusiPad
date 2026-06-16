@@ -20,7 +20,7 @@ import { setKeySignature } from './commands/key';
 import { transpose } from './commands/transpose';
 import { setTempo } from './commands/tempo';
 import { setMeter } from './commands/meter';
-import { removeChordAt, setChordAt } from './commands/chord';
+import { moveChord, removeChordAt, setChordAt } from './commands/chord';
 import {
   addSection,
   editSection,
@@ -184,6 +184,12 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
   const handleRemoveChord = useCallback(
     (measureIndex: number, entryIndex: number) => {
       dispatch(removeChordAt(measureIndex, entryIndex));
+    },
+    [dispatch],
+  );
+  const handleMoveChord = useCallback(
+    (fromM: number, fromE: number, toM: number, toE: number) => {
+      dispatch(moveChord(fromM, fromE, toM, toE));
     },
     [dispatch],
   );
@@ -372,6 +378,7 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         isPlaying={transport.state.isPlaying}
         onSetChord={handleSetChord}
         onRemoveChord={handleRemoveChord}
+        onMoveChord={handleMoveChord}
         onPreviewChord={auditionSpec}
         onEditSection={handleEditSection}
         onRemoveSection={handleRemoveSection}

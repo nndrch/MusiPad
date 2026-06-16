@@ -18,7 +18,7 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 - **M7 — Sections, Annotations, Download + Print (shipped):** Standard MusicXML `<direction placement="above">` marks: boxed rehearsal-mark **Sections** (`<rehearsal enclosure="square">`) and free-text **Annotations** (`<words>`, tagged `data-musipad="annotation"`), one of each per bar (snap-to-bar); inline edit, drag-to-snap (move), remove, all undoable; rendered as HTML overlays (`MarkLayer`) stripped from the OSMD render clone. Plus the earlier **Download** (serialize → `.musicxml`, prolog preserved) and **Print** (`@media print`, score only). _M7 merged via [PR #15](https://github.com/nndrch/MusiPad/pull/15); latest shipped is now **M9** ([PR #17](https://github.com/nndrch/MusiPad/pull/17))._
 - **Live preview:** https://musipad.vercel.app (Vercel project `nndrchs-projects/musipad`; GitHub connected → pushes to `main` deploy production, branches/PRs get preview URLs).
 - **Planning:** a 3-milestone post-MVP re-weigh (CLAUDE.md rule 6) at M3 promoted three low-hanging items into milestones — **title subline → M4** (shipped), **bar-highlight playhead → M5**, **basic Print → M7**. During M5 scoping the human also pulled **auto-scroll → M5** (was post-MVP P3). A4 PDF generation stays post-MVP. The **M6 re-weigh (2026-06-08)** then promoted **meter / time-signature editing (P7) → new M8** — its own focused milestone after M7, so M7 stays tight — and renumbered **Polish → M9** (now **M12**, after the chord-chart pivot — see _Next direction_ above); everything else stays deferred (P9 note-audition and P10 lead-sheet-editor are product-direction/epic work, not MVP milestones).
-- **In flight:** **M11 — Drag-to-reorder chords (snap to slashes)** (PRD §9 M11) — building next. **M10** shipped via [PR #18](https://github.com/nndrch/MusiPad/pull/18); then **M12 — Polish**.
+- **In flight:** **M11 — Drag-to-reorder chords (snap to slashes)** (PRD §9 M11) is **implemented and in review**. **M10** shipped via [PR #18](https://github.com/nndrch/MusiPad/pull/18). Next: **M12 — Polish**.
 - **Captured requests / new post-MVP (2026-06-15):** the post-M8 feedback added **P15** (compound-meter felt-pulse slash grouping — the alternative to the chosen numerator slashes) and **P16** (authoring — create a chart from scratch / add bars). The earlier meter request was promoted to M8 (now shipped; **P7** is a promoted stub).
 
 ---
@@ -40,7 +40,7 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 | M9  | Simplified chord-chart rendering (slashes + chords only)                | ✅ Done    | [#17](https://github.com/nndrch/MusiPad/pull/17)        | `19518d9`             |
 | M10 | A4 page layout + view toggle + print                                    | ✅ Done    | [#18](https://github.com/nndrch/MusiPad/pull/18)        | `87ff3dd`             |
 | M10 | A4 page layout + view toggle + print                                    | ⏳ Planned | —                                                       | —                     |
-| M11 | Drag-to-reorder chords (snap to slashes; from P17)                       | ⏳ Planned | —                                                       | —                     |
+| M11 | Drag-to-reorder chords (snap to slashes; from P17)                       | 🔄 In review | _(PR pending)_                                       | _(pending)_           |
 | M12 | Polish (renumbered from M9)                                             | ⏳ Planned | —                                                       | —                     |
 
 Legend: ✅ done · 🟡 in flight · ⏳ not started.
@@ -155,9 +155,18 @@ Adds the §6.6 page-layout view and the **Page ↔ Full** toggle (default **Page
 - **Verified:** `eslint`/`tsc -b`/`vite build` clean; headless-Chrome live pass on a new 64-bar sample ([`public/samples/leadsheet.musicxml`](../public/samples/leadsheet.musicxml)) — 3 A4 pages, overlays distributed 128/112/16 across pages, chord editor opens on page 2, header + page numbers placed, Full mode unregressed, Print → 3-page A4 PDF with no clipping.
 - **Deferred (post-MVP):** A4 **PDF download** stays P4; **exact Berklee chord parity on print** — OSMD ignores `<kind text>`, so print shows its house style (`Dm7`/`Cmaj7`) vs the screen pills (`Dmi7`/`CMaj7`); fixable later via OSMD's `setChordSymbolLabelText` (noted in P4). Print slashes are OSMD's slash-noteheads (with stems) rather than the screen's minimal strokes.
 
-### M11–M12 ⏳ Planned — chord drag, polish
+### M11 — Drag-to-reorder chords (snap to slashes) 🔄 (in review)
 
-- **M11 — Drag-to-reorder chords:** drag a chord pill, snapping to the nearest slash (within/across bars); a `moveChord` command over the M6 chord commands. Promoted from P17 (2026-06-15). PRD §9 M11.
+Lets a chord pill be **dragged onto another beat** — within a bar or across bars — snapping to the nearest slash, mirroring the M7 section/annotation drag-to-snap. Promoted from post-MVP **P17**.
+
+- **`moveChord(fromMeasure, fromEntry, toMeasure, toEntry)`** ([`commands/chord.ts`](../src/commands/chord.ts)) — **relocates the whole `<harmony>` element** (so its `kind/@text`, `inversion`, `degree`, `frame`, `@type` ride along, Invariant #2), drops a stale beat `<offset>` (snaps onto the target beat), and **overwrites** any chord already there. Snapshots the `<part>` for the inverse since a move can touch two measures (like `MoveSection`); undoable.
+- **`ChordLayer` drag** — clones `MarkLayer`'s pointer-capture flow on the pills: `pointerdown` captures, `pointermove` past a 4px threshold becomes a drag (else it's still a click → opens the editor), the nearest beat **anchor under the pointer** is the snap target (highlighted with a dashed `.chord-drop` box), `pointerup` dispatches `moveChord` when the target differs. The dragged pill follows the pointer (keeping its −50% centering); screen↔unscaled uses the layer's live rect-vs-frame scale, so it's correct in **both** view modes (page + full).
+- Wired `onMoveChord` through `OsmdView` → `App` (`handleMoveChord` → `dispatch(moveChord(...))`).
+- **AC (PRD §9 M11):** ✅ drag a chord to another slash (same bar and across bars) → it moves and snaps; the `<harmony>` moves with it (persists in the DOM/download); click-to-edit still works (drag threshold); undo/redo reverts the move.
+- **Verified:** `eslint`/`tsc -b`/`vite build` clean; headless-Chrome drag pass on the A4 page-layout sample — within-bar move, across-bar move with overwrite, undo reverts, click-to-edit preserved, drop-target highlight + dragging-pill affordances render.
+
+### M12 ⏳ Planned — Polish
+
 - **M12 — Polish:** toasts, empty/error states, keyboard shortcuts, design audit (renumbered from the old M9).
 
 ---
