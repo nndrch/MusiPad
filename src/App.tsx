@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import { LocalFileIO } from './io/LocalFileIO';
 import type { ScoreIO } from './io/ScoreIO';
@@ -12,7 +12,6 @@ import { applySlashGrid } from './model/slashGrid';
 import { readScoreInfo } from './model/scoreInfo';
 import { OsmdView } from './render/OsmdView';
 import type { ViewMode } from './render/useOsmd';
-import { PrintView, type PrintHandle } from './render/PrintView';
 import { Transport } from './audio/Transport';
 import { useTransport } from './audio/useTransport';
 import { useScoreEditor } from './store/useScoreEditor';
@@ -45,13 +44,11 @@ import { Topbar } from './ui/Topbar';
 import { Toolbar } from './ui/Toolbar';
 import { Banner } from './ui/Banner';
 import './App.css';
-import './print.css';
 
-// M9: Download + Playback are set aside while we focus the chord-chart rendering
-// pass — hidden for now (flip these to re-enable). Typed as boolean so the JSX
-// guards don't read as constant-false conditions.
+// Playback is set aside until M13 re-enables it with the real-audio transport —
+// hidden for now (flip to re-enable). Typed as boolean so the JSX guard doesn't read
+// as a constant-false condition. (Export was un-gated in M12; Print retired.)
 const ENABLE_PLAYBACK: boolean = false;
-const ENABLE_DOWNLOAD: boolean = false;
 
 /**
  * App shell (M1). Empty state → dropzone; once a score loads, the topbar +
@@ -197,20 +194,11 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
   // Download (M7): serialize the live DOM (commands mutate it in place, so this
   // captures every edit) and save through the IO seam (PRD §7.5). `serializeXml`
   // re-emits the captured declaration/DOCTYPE and unedited regions stay
-  // byte-identical to the load baseline (Invariant #2). No success toast in M7 —
-  // deferred to M9 (ui-decisions A4). Print is browser-native via `@media print`.
-  const handleDownload = useCallback(() => {
+  // byte-identical to the load baseline (Invariant #2). The tool's deliverable —
+  // surfaced as "Export" in M12 (Print retired; see PrintView, kept dormant).
+  const handleExport = useCallback(() => {
     void io.save(serializeXml(doc));
   }, [io, doc]);
-  // Print (M10): render the dedicated off-screen A4 pages, then open the print
-  // dialog. OSMD's async load can't be awaited inside `beforeprint`, so we
-  // prepare first (PrintView captures the paginated sheets) and only then print
-  // — clean multi-page A4 with no mid-system clipping (replaces the M7 CSS fit).
-  const printRef = useRef<PrintHandle>(null);
-  const handlePrint = useCallback(async () => {
-    await printRef.current?.prepare();
-    window.print();
-  }, []);
 
   // View mode (M10, PRD §6.6): paginated A4 pages vs continuous scroll.
   // Defaults to page layout (the print-friendly showcase); toggled in the topbar.
@@ -343,9 +331,7 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         canRedo={canRedo}
         onUndo={undo}
         onRedo={redo}
-        onDownload={handleDownload}
-        showDownload={ENABLE_DOWNLOAD}
-        onPrint={handlePrint}
+        onExport={handleExport}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onClose={onClose}
@@ -389,8 +375,6 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         pendingAnnotation={pendingAnnotation}
         onConsumePendingAnnotation={consumePendingAnnotation}
       />
-      {/* Off-screen paginated A4 render used by Print (M10); portals to body. */}
-      <PrintView ref={printRef} doc={doc} info={info} />
       {ENABLE_PLAYBACK && <Transport controls={transport} />}
     </div>
   );

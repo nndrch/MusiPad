@@ -2,7 +2,6 @@ import {
   Download,
   FileMusic,
   FileText,
-  Printer,
   Redo2,
   ScrollText,
   Undo2,
@@ -25,12 +24,8 @@ interface TopbarProps {
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
-  /** Save the live DOM as a `.musicxml` download (M7). */
-  onDownload: () => void;
-  /** Whether to show the Download button (M9: hidden while export is out of scope). */
-  showDownload?: boolean;
-  /** Print the score (browser print dialog, score-only via `@media print`, M7). */
-  onPrint: () => void;
+  /** Export the live DOM as a corrected `.musicxml` download (M7, surfaced M12). */
+  onExport: () => void;
   /** Current layout mode (M10) — paginated A4 (`page`) vs continuous (`full`). */
   viewMode: ViewMode;
   /** Switch the layout mode (M10). */
@@ -41,10 +36,10 @@ interface TopbarProps {
 
 /**
  * Slim topbar (PRD §6.2). Shows the loaded file name, Undo/Redo (M3) —
- * disabled/faint when their stack is empty (PRD §6.4) — and the M7 output
- * actions: a single orange **Download** primary (the app's only accent button,
- * PRD §6.1/§6.2) plus a neutral **Print**. Key / Tempo / Feel are surfaced by
- * the toolbar controls and the document subline (M4), not here.
+ * disabled/faint when their stack is empty (PRD §6.4) — and a single orange
+ * **Export** primary (the app's only accent button, PRD §6.1/§6.2), the tool's
+ * output of record. (Print was retired in M12 — §3.) Key / Tempo / Feel are
+ * surfaced by the toolbar controls and the document subline (M4), not here.
  */
 export function Topbar({
   fileName,
@@ -52,9 +47,7 @@ export function Topbar({
   canRedo,
   onUndo,
   onRedo,
-  onDownload,
-  showDownload = true,
-  onPrint,
+  onExport,
   viewMode,
   onViewModeChange,
   onClose,
@@ -120,24 +113,13 @@ export function Topbar({
 
       <button
         type="button"
-        className="topbar__btn"
-        onClick={onPrint}
-        title="Print the score"
+        className="topbar__btn topbar__btn--primary"
+        onClick={onExport}
+        title="Export the corrected MusicXML"
       >
-        <Printer size={14} strokeWidth={1.75} />
-        Print
+        <Download size={14} strokeWidth={1.75} />
+        Export
       </button>
-      {showDownload && (
-        <button
-          type="button"
-          className="topbar__btn topbar__btn--primary"
-          onClick={onDownload}
-          title="Download as MusicXML"
-        >
-          <Download size={14} strokeWidth={1.75} />
-          Download
-        </button>
-      )}
 
       <button type="button" className="topbar__btn" onClick={onClose}>
         <X size={14} strokeWidth={1.75} />
