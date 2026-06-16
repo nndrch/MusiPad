@@ -1,4 +1,14 @@
-import { Download, FileMusic, Printer, Redo2, Undo2, X } from 'lucide-react';
+import {
+  Download,
+  FileMusic,
+  FileText,
+  Printer,
+  Redo2,
+  ScrollText,
+  Undo2,
+  X,
+} from 'lucide-react';
+import type { ViewMode } from '../render/useOsmd';
 import './Topbar.css';
 
 // The undo/redo handler accepts both ⌘ (Mac) and Ctrl (Windows/Linux); show the
@@ -21,6 +31,10 @@ interface TopbarProps {
   showDownload?: boolean;
   /** Print the score (browser print dialog, score-only via `@media print`, M7). */
   onPrint: () => void;
+  /** Current layout mode (M10) — paginated A4 (`page`) vs continuous (`full`). */
+  viewMode: ViewMode;
+  /** Switch the layout mode (M10). */
+  onViewModeChange: (mode: ViewMode) => void;
   /** Close the current score and return to the empty state. */
   onClose: () => void;
 }
@@ -41,6 +55,8 @@ export function Topbar({
   onDownload,
   showDownload = true,
   onPrint,
+  viewMode,
+  onViewModeChange,
   onClose,
 }: TopbarProps) {
   return (
@@ -72,6 +88,33 @@ export function Topbar({
           title={`Redo (${REDO_HINT})`}
         >
           <Redo2 size={16} strokeWidth={1.75} />
+        </button>
+      </div>
+
+      <div
+        className="topbar__viewtoggle"
+        role="group"
+        aria-label="Layout view"
+      >
+        <button
+          type="button"
+          className="topbar__seg"
+          aria-pressed={viewMode === 'page'}
+          onClick={() => onViewModeChange('page')}
+          title="Page layout (A4 sheets)"
+        >
+          <FileText size={14} strokeWidth={1.75} />
+          Page
+        </button>
+        <button
+          type="button"
+          className="topbar__seg"
+          aria-pressed={viewMode === 'full'}
+          onClick={() => onViewModeChange('full')}
+          title="Fullscreen (continuous scroll)"
+        >
+          <ScrollText size={14} strokeWidth={1.75} />
+          Full
         </button>
       </div>
 

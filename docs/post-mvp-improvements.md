@@ -70,7 +70,12 @@ True client-side **PDF export in A4 format** — a downloadable, paginated PDF o
 
 > The simpler **Print** button (browser print via `@media print` CSS, score only) was **promoted to M7** alongside Download. This section now covers only the heavier PDF-generation half.
 >
-> **Update (M10, 2026-06-15):** the **paginated A4 page layout** and the **clip-free browser print** of it are now **promoted to M10** (PRD §6.6), built on the "paginated rendering" foundation below. P4 is now scoped to just the **downloadable A4 PDF** (svg2pdf.js + jsPDF) layered on top of M10's pages.
+> **Update (M10, 2026-06-15):** the **paginated A4 page layout** and the **clip-free browser print** of it were **promoted to M10** (PRD §6.6) and are now **built** — the "paginated rendering" foundation below shipped as [`render/PrintView.tsx`](../src/render/PrintView.tsx) (off-screen `A4_P` OSMD) + the page-aware overlay projector. P4 is now scoped to just the **downloadable A4 PDF** (svg2pdf.js + jsPDF), which can feed off the same `PrintView` page SVGs.
+>
+> **Deferred from M10 (2026-06-16):**
+>
+> - **Exact Berklee chord-symbol parity on print.** The screen draws our own HTML pills (`Dmi7`, `CMaj7`); the print pages let OSMD ink the chords, and OSMD **ignores the MusicXML `<kind text>` override** (verified), so printed symbols use OSMD's house style (`Dm7`, `Cmaj7`). To match the pills, set OSMD's chord labels on the print instance via `EngravingRules.setChordSymbolLabelText(ChordSymbolEnum.x, 'Maj7' | 'mi' | …)` — a kind-value → `ChordSymbolEnum` → Berklee-label table (the labels already exist in [`model/chordSymbol`](../src/model/chordSymbol.ts) `qualityLabel`). Small, self-contained; cut from M10 to keep scope tight.
+> - **Print slash style.** Print shows OSMD's slash **noteheads (with stems)**; the screen shows our minimal single-stroke `SlashLayer`. A print-only minimal-slash pass (or hiding stems + overlaying) could match them, but the engraved slash reads fine on paper.
 
 **Scope / ideas:**
 
