@@ -137,10 +137,6 @@
   opacity: 0.7;
 }
 
-/* Display-only while playing: marks read, but no editing affordances. */
-.mark-layer.is-playing .mark__label {
-  cursor: default;
-}
 
 /* M9: section-start double barline — two thin vertical lines at the bar's left
    edge, centered on the staff. Drawn here (not by OSMD) so it shows for both add

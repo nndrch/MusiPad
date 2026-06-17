@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pause, Play } from 'lucide-react';
+import { LocateFixed, Pause, Play } from 'lucide-react';
 import type { TransportControls } from './useTransport';
 import './Transport.css';
 
@@ -47,7 +47,8 @@ function MetronomeIcon({ size = 18 }: { size?: number }) {
  * (grayscale off → accent on). Disabled until a playable schedule exists.
  */
 export function Transport({ controls }: TransportProps) {
-  const { state, toggle, seek, setMetronome } = controls;
+  const { state, toggle, seek, setMetronome, followPlayhead, setFollowPlayhead } =
+    controls;
   const { positionSec, durationSec, isPlaying, metronome } = state;
   const disabled = durationSec <= 0;
 
@@ -112,6 +113,22 @@ export function Transport({ controls }: TransportProps) {
         title="Metronome (click on every beat)"
       >
         <MetronomeIcon size={18} />
+      </button>
+
+      <button
+        type="button"
+        className={`transport__metronome${followPlayhead ? ' is-on' : ''}`}
+        onClick={() => setFollowPlayhead(!followPlayhead)}
+        disabled={disabled}
+        aria-pressed={followPlayhead}
+        aria-label="Follow playhead"
+        title={
+          followPlayhead
+            ? 'Following the playhead — click to stop auto-scroll'
+            : 'Not following — click to auto-scroll the playing bar into view'
+        }
+      >
+        <LocateFixed size={16} strokeWidth={1.75} />
       </button>
     </footer>
   );

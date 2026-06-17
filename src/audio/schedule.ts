@@ -100,11 +100,25 @@ export function quarterToSeconds(q: number, segments: TempoSegment[]): number {
   return seconds;
 }
 
+export interface ScheduleOptions {
+  /**
+   * Override the chart's tempo for the whole piece (M13). Generated chord charts
+   * carry no `<sound tempo>`, so playback tempo comes from the audio's `.bpm`
+   * sidecar; this ignores any DOM tempo and applies one constant BPM (the
+   * recording is warped to a single grid — `docs/post-mvp` notes the variable
+   * case stays out of scope).
+   */
+  tempoOverrideBpm?: number;
+}
+
 /**
  * Walk the first part of the score into a `PlaybackSchedule`. PoC assumes the
  * user works the first/primary part (PRD §15); multi-part is out of scope.
  */
-export function buildSchedule(doc: Document): PlaybackSchedule {
+export function buildSchedule(
+  doc: Document,
+  opts: ScheduleOptions = {},
+): PlaybackSchedule {
   const part = doc.querySelector('part');
   const onsets: Onset[] = [];
   const chords: ChordEvent[] = [];
@@ -244,14 +258,21 @@ export function buildSchedule(doc: Document): PlaybackSchedule {
     tempoSegments.unshift({ startQuarter: 0, bpm: DEFAULT_BPM });
   }
 
+  // M13: a fixed override (the audio's `.bpm` sidecar) supersedes any DOM tempo
+  // — the recording is one constant tempo and the generated chart carries none.
+  const segments =
+    opts.tempoOverrideBpm && opts.tempoOverrideBpm > 0
+      ? [{ startQuarter: 0, bpm: opts.tempoOverrideBpm }]
+      : tempoSegments;
+
   return {
     onsets,
     chords,
     metronome,
-    tempoSegments,
+    tempoSegments: segments,
     measureStartQuarters,
     totalQuarters,
-    totalSeconds: quarterToSeconds(totalQuarters, tempoSegments),
+    totalSeconds: quarterToSeconds(totalQuarters, segments),
   };
 }
 

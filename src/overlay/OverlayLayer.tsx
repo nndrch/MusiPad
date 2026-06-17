@@ -11,13 +11,16 @@ interface OverlayLayerProps {
   /** Currently selected bar (ephemeral view state — not a Command). */
   selectedMeasure: number | null;
   onSelectMeasure: (measureIndex: number) => void;
-  /** Seek the playhead to a bar (used while playing — click-to-seek, M5). */
+  /** Activate playback at a bar (M13): seek there + toggle play/pause. */
   onSeekMeasure: (measureIndex: number) => void;
   /** Bar the playhead is in (-1 if none); drives the playing highlight. */
   playingMeasure: number;
   isPlaying: boolean;
   /** The scroll container, for auto-scrolling the playing bar into view. */
   scrollRef: RefObject<HTMLElement | null>;
+  /** Whether the playing bar auto-scrolls into view during playback (M13 toggle,
+   *  default on). When off, the page doesn't move while the recording plays. */
+  followPlayhead?: boolean;
 }
 
 /**
@@ -43,6 +46,7 @@ export const OverlayLayer = memo(function OverlayLayer({
   playingMeasure,
   isPlaying,
   scrollRef,
+  followPlayhead = true,
 }: OverlayLayerProps) {
   const { boxes, frame } = useMeasureBoxes(osmdRef, hostRef, renderSignal);
   const layerRef = useRef<HTMLDivElement>(null);
@@ -51,7 +55,7 @@ export const OverlayLayer = memo(function OverlayLayer({
   // Only nudges when the bar has drifted outside a comfortable band, so it
   // doesn't constantly re-center or fight the user mid-song.
   useEffect(() => {
-    if (!isPlaying || playingMeasure < 0) return;
+    if (!followPlayhead || !isPlaying || playingMeasure < 0) return;
     const layer = layerRef.current;
     const scroll = scrollRef.current;
     if (!layer || !scroll) return;
@@ -67,7 +71,7 @@ export const OverlayLayer = memo(function OverlayLayer({
     if (above || below) {
       bar.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, [playingMeasure, isPlaying, scrollRef]);
+  }, [playingMeasure, isPlaying, scrollRef, followPlayhead]);
 
   if (!frame || boxes.length === 0) return null;
 
@@ -102,8 +106,9 @@ export const OverlayLayer = memo(function OverlayLayer({
               // Don't let the click bubble to the desk's deselect handler.
               e.stopPropagation();
               onSelectMeasure(box.measureIndex);
-              // While playing, a click also moves the playhead here (B5/B).
-              if (isPlaying) onSeekMeasure(box.measureIndex);
+              // Drive playback from this bar (M13): the handler seeks here and
+              // toggles play/pause (no-op when no recording is loaded).
+              onSeekMeasure(box.measureIndex);
             }}
           />
         );
