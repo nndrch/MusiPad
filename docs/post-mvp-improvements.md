@@ -361,8 +361,8 @@ _Captured 2026-06-16. Hardening the M13 sync, and a possible return of synthesiz
 
 **Scope / ideas:**
 
-- **Lead-in robustness.** M13 absorbs the WAV's fixed lead-in (the pipeline trims "one bar before beat 1", and `--no-trim-intro` changes it) with a single `audioOffset` + nudge. Harden this: auto-detect the offset from the first downbeat, persist a per-file nudge, handle `--no-trim-intro` exports, and surface a clear "out of sync? nudge here" affordance.
+- **Lead-in / offset robustness.** M13 shipped with **bar 1 = audio `t=0`** (no offset, no nudge) — correct for the real exports tested (the metronome locks). If exports ever vary (a genuine lead-in, `--no-trim-intro`, a different trim), re-introduce a small **offset control** (or auto-detect the first downbeat) to realign. The nudge UI was built and then removed once `t=0` proved right by ear.
 - **Multi-tempo / `--allow-tempo-change` exports.** The pipeline aborts on multi-tempo songs today, so M13 assumes constant tempo. If variable-tempo exports ever ship, the bar↔time map (`schedule.ts` already reads every `<sound tempo>`) must be reconciled with the audio warp.
 - **Optional synth voice over the recording.** Re-introduce the retired synth chord realization (M2) as an _optional_ layer — e.g. to audition a corrected chord _against_ the track, or play-along when no recording is loaded. The synth still exists for the metronome + editor audition, so this is a re-wiring, not new audio code. (See **P3**.)
 
-**Why deferred:** the constant-tempo, single-offset case (with a manual nudge) covers the real pipeline output; the rest is hardening for edge exports and an optional enhancement.
+**Why deferred:** bar 1 = audio `t=0` at constant tempo covers the real pipeline output; the rest is hardening for edge exports (variable tempo, different trims) and an optional enhancement.
