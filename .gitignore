@@ -26,3 +26,8 @@ dist-ssr
 # Claude Code local config
 .claude/
 .vercel
+
+# M13 audio fixture — a real recording (large + copyright); loaded via the
+# file-picker at runtime, so it never needs to ship. The synthetic sample
+# charts stay committed.
+public/samples/Pulse_and_Shine_*

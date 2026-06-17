@@ -76,11 +76,6 @@
   vertical-align: 0.08em;
 }
 
-/* Suppress editing affordances while playing: pills stay visible (display-only)
-   so the chart still reads, but clicks pass through to the seek overlay. */
-.chord-layer.is-playing .chord-pill {
-  pointer-events: none;
-}
 
 /* Hover zone over an *empty* slash (no chord above it). Invisible itself — its
    only job is to reveal the ＋. Chord-add stays separate from note editing, so

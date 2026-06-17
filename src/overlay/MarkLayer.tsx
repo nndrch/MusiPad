@@ -29,7 +29,8 @@ interface MarkLayerProps {
   doc: Document;
   /** Bumps on every command edit so we re-read the (in-place-mutated) DOM. */
   revision: number;
-  /** Editing affordances are hidden while playing (the chart is display-only). */
+  /** Drives the layer's `is-playing` class (an inert styling hook now). Editing
+   *  stays enabled during playback (M13). */
   isPlaying: boolean;
   /** Selected bar — its mark is highlighted too (B7.7). */
   selectedMeasure: number | null;
@@ -43,6 +44,9 @@ interface MarkLayerProps {
   pendingEdit: number | null;
   /** Called once the pending editor has been opened. */
   onPendingEditConsumed: () => void;
+  /** Report when an inline editor opens/closes (M13) — lets the score suspend
+   *  the playing-bar auto-scroll while editing during playback. */
+  onEditingChange?: (open: boolean) => void;
 }
 
 interface DragState {
@@ -83,7 +87,8 @@ const ROW_HEIGHT = 22;
  * (OSMD's native marks are stripped from the render clone, `useOsmd`), and edit
  * through the command layer (undoable, Invariant #3). Mirrors `ChordLayer`:
  * lives inside `.osmd-scale` (rides the zoom transform), click-through except
- * for its own items, hidden affordances while playing.
+ * for its own items. Editing affordances stay enabled during playback (M13);
+ * mark items stopPropagation, so they never trigger the bar click underneath.
  *
  * Interactions (ui-decisions A5/A7/B7.7): hover → accent; click → inline
  * edit-in-place (Enter commit / Esc cancel / blur commit; empty → remove);
@@ -105,6 +110,7 @@ export const MarkLayer = memo(function MarkLayer({
   onMove,
   pendingEdit,
   onPendingEditConsumed,
+  onEditingChange,
 }: MarkLayerProps) {
   const { boxes, frame } = useMeasureBoxes(osmdRef, hostRef, renderSignal);
   const layerRef = useRef<HTMLDivElement>(null);
@@ -167,6 +173,14 @@ export const MarkLayer = memo(function MarkLayer({
     input.select();
   }, [editing]);
 
+  // Tell the score when an inline editor is open, so it suspends the playing-bar
+  // auto-scroll while editing during playback (M13).
+  useEffect(() => {
+    if (!editing) return;
+    onEditingChange?.(true);
+    return () => onEditingChange?.(false);
+  }, [editing, onEditingChange]);
+
   if (!frame || boxes.length === 0) return null;
 
   /** Which measure index sits under a screen point — containing box first, else nearest center. */
@@ -197,7 +211,7 @@ export const MarkLayer = memo(function MarkLayer({
   }
 
   function startDrag(e: ReactPointerEvent, measureIndex: number) {
-    if (isPlaying || editing) return;
+    if (editing) return;
     e.stopPropagation();
     const layer = layerRef.current;
     const scale =
@@ -366,13 +380,11 @@ export const MarkLayer = memo(function MarkLayer({
                 <span
                   className="mark__label"
                   role="button"
-                  tabIndex={isPlaying ? -1 : 0}
+                  tabIndex={0}
                   title={
-                    isPlaying
-                      ? undefined
-                      : variant === 'section'
-                        ? 'Click to rename · drag to move'
-                        : 'Click to edit · drag to move'
+                    variant === 'section'
+                      ? 'Click to rename · drag to move'
+                      : 'Click to edit · drag to move'
                   }
                   onPointerDown={(e) => startDrag(e, m.measureIndex)}
                   onPointerMove={moveDrag}
@@ -381,21 +393,19 @@ export const MarkLayer = memo(function MarkLayer({
                 >
                   {m.value || (variant === 'section' ? 'Section' : 'Note')}
                 </span>
-                {!isPlaying && (
-                  <button
-                    type="button"
-                    className="mark__remove"
-                    aria-label={variant === 'section' ? 'Remove section' : 'Remove annotation'}
-                    title="Remove"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemove(m.measureIndex);
-                    }}
-                  >
-                    <X size={11} strokeWidth={2.4} />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="mark__remove"
+                  aria-label={variant === 'section' ? 'Remove section' : 'Remove annotation'}
+                  title="Remove"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove(m.measureIndex);
+                  }}
+                >
+                  <X size={11} strokeWidth={2.4} />
+                </button>
               </>
             )}
           </div>

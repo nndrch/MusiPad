@@ -1,4 +1,5 @@
 import {
+  AudioLines,
   Download,
   FileMusic,
   FileText,
@@ -26,6 +27,10 @@ interface TopbarProps {
   onRedo: () => void;
   /** Export the live DOM as a corrected `.musicxml` download (M7, surfaced M12). */
   onExport: () => void;
+  /** Open the picker to load the recording to review against (M13). */
+  onLoadAudio: () => void;
+  /** Whether a recording is currently loaded (M13) — drives the button label. */
+  audioLoaded?: boolean;
   /** Current layout mode (M10) — paginated A4 (`page`) vs continuous (`full`). */
   viewMode: ViewMode;
   /** Switch the layout mode (M10). */
@@ -48,6 +53,8 @@ export function Topbar({
   onUndo,
   onRedo,
   onExport,
+  onLoadAudio,
+  audioLoaded = false,
   viewMode,
   onViewModeChange,
   onClose,
@@ -110,6 +117,20 @@ export function Topbar({
           Full
         </button>
       </div>
+
+      <button
+        type="button"
+        className="topbar__btn"
+        onClick={onLoadAudio}
+        title={
+          audioLoaded
+            ? 'Recording loaded — click to replace'
+            : 'Load the recording to play along with (audio + .bpm sidecar)'
+        }
+      >
+        <AudioLines size={14} strokeWidth={1.75} />
+        {audioLoaded ? 'Audio ✓' : 'Load audio'}
+      </button>
 
       <button
         type="button"
