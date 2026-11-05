@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import { LocalFileIO } from './io/LocalFileIO';
 import type { ScoreIO } from './io/ScoreIO';
@@ -44,11 +44,6 @@ import { Topbar } from './ui/Topbar';
 import { Toolbar } from './ui/Toolbar';
 import { Banner } from './ui/Banner';
 import './App.css';
-
-// Playback is set aside until M13 re-enables it with the real-audio transport —
-// hidden for now (flip to re-enable). Typed as boolean so the JSX guard doesn't read
-// as a constant-false condition. (Export was un-gated in M12; Print retired.)
-const ENABLE_PLAYBACK: boolean = false;
 
 /**
  * App shell (M1). Empty state → dropzone; once a score loads, the topbar +
@@ -163,7 +158,46 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
   // #3); adding/updating also auditions the new chord (B6.12) via the same
   // voicing path playback uses. `previewChord` is a stable callback, so these
   // handlers keep a stable identity (the memoized chord layer doesn't churn).
-  const { previewChord, seek, seekToMeasure } = transport;
+  const { previewChord, seekToMeasure, loadAudio, toggle, pause } = transport;
+
+  // The playhead's current bar (a ref so the add-handlers below stay stable
+  // across the ~per-bar updates during playback). Used to target the current
+  // bar when adding a section/note while playing (M13).
+  const currentMeasureRef = useRef(transport.state.currentMeasure);
+  useEffect(() => {
+    currentMeasureRef.current = transport.state.currentMeasure;
+  }, [transport.state.currentMeasure]);
+
+  // Starting any edit (opening a chord/mark editor) pauses the recording at the
+  // playhead; the reviewer resumes manually (M13). Pause-only, never auto-resume.
+  const handleEditingChange = useCallback(
+    (open: boolean) => {
+      if (open) pause();
+    },
+    [pause],
+  );
+
+  // Recording (M13): load the paired stabilised audio + its `.bpm` via a hidden
+  // multi-file picker. The generated chart carries no tempo, so the `.bpm` drives
+  // playback; the audio then plays in sync and the bar-highlight follows it (§6.7).
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const openAudioPicker = useCallback(() => audioInputRef.current?.click(), []);
+  const handleAudioFiles = useCallback(
+    async (files: FileList | null) => {
+      if (!files || files.length === 0) return;
+      const list = Array.from(files);
+      const audioFile = list.find(
+        (f) =>
+          f.type.startsWith('audio/') ||
+          /\.(wav|mp3|m4a|aac|ogg|flac)$/i.test(f.name),
+      );
+      if (!audioFile) return;
+      const bpmFile = list.find((f) => /\.bpm$/i.test(f.name));
+      const bpm = bpmFile ? parseFloat((await bpmFile.text()).trim()) : 0;
+      loadAudio(audioFile, bpm);
+    },
+    [loadAudio],
+  );
   const auditionSpec = useCallback(
     (spec: ChordSpec) => {
       const voicing = voicingFromSpec(spec);
@@ -227,28 +261,36 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
   // annotation's inline editor to open (pendingAnnotation).
   const handleAddSection = useCallback(
     (label: string) => {
+      const playhead = currentMeasureRef.current;
       const target =
         selectedMeasure ??
-        firstFreeMeasure(
-          doc,
-          readChartSections(doc).map((s) => s.measureIndex),
-        );
+        (playhead >= 0
+          ? playhead
+          : firstFreeMeasure(
+              doc,
+              readChartSections(doc).map((s) => s.measureIndex),
+            ));
       if (target == null) return;
+      pause();
       dispatch(addSection(target, label));
     },
-    [dispatch, doc, selectedMeasure],
+    [dispatch, doc, selectedMeasure, pause],
   );
   const handleAddAnnotation = useCallback(() => {
     const annotated = readChartAnnotations(doc).map((a) => a.measureIndex);
-    const target = selectedMeasure ?? firstFreeMeasure(doc, annotated);
+    const playhead = currentMeasureRef.current;
+    const target =
+      selectedMeasure ??
+      (playhead >= 0 ? playhead : firstFreeMeasure(doc, annotated));
     if (target == null) return;
+    pause();
     // Skip a no-op dispatch (and its phantom undo step) if the bar already has
-    // an annotation (an explicitly selected bar may) — just reopen its editor.
+    // an annotation (the selected/current bar may) — just reopen its editor.
     if (!annotated.includes(target)) {
       dispatch(addAnnotation(target, ''));
     }
     setPendingAnnotation(target);
-  }, [dispatch, doc, selectedMeasure]);
+  }, [dispatch, doc, selectedMeasure, pause]);
   const handleEditSection = useCallback(
     (measureIndex: number, label: string) =>
       dispatch(editSection(measureIndex, label)),
@@ -280,22 +322,23 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
     [],
   );
 
-  // Selecting a bar **cues the play-start**: Play begins from the selected bar;
-  // with nothing selected it plays from the top. We do this by seeking the
-  // (paused) playhead to the bar on select, and back to 0 on deselect — so the
-  // transport just plays from its current position. While playing we don't seek
-  // here: bar clicks already seek via onSeekMeasure (B5.8), and Esc/deselect
-  // must not yank playback back to the start.
-  const isPlaying = transport.state.isPlaying;
+  const hasAudio = transport.state.hasAudio;
+  // Selection is pure *view* state (Invariant #3) — it never moves the playhead,
+  // so editing a chord and clicking away can't yank playback back to the start.
   const handleSelectMeasure = useCallback(
-    (measureIndex: number | null) => {
-      setSelectedMeasure(measureIndex);
-      if (!isPlaying) {
-        if (measureIndex == null) seek(0);
-        else seekToMeasure(measureIndex);
-      }
+    (measureIndex: number | null) => setSelectedMeasure(measureIndex),
+    [],
+  );
+  // Clicking a bar drives playback (M13): seek the recording to that bar and
+  // toggle play/pause — a click starts playing from there, and a click while
+  // playing pauses at it. No-op without a recording (the transport is hidden).
+  const handleActivateMeasure = useCallback(
+    (measureIndex: number) => {
+      if (!hasAudio) return;
+      seekToMeasure(measureIndex);
+      toggle();
     },
-    [isPlaying, seek, seekToMeasure],
+    [hasAudio, seekToMeasure, toggle],
   );
 
   // Dismissible alert when defaults were assigned on load (PRD §11). Reset when
@@ -332,6 +375,8 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         onUndo={undo}
         onRedo={redo}
         onExport={handleExport}
+        onLoadAudio={openAudioPicker}
+        audioLoaded={transport.state.hasAudio}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onClose={onClose}
@@ -359,9 +404,11 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         revision={revision}
         selectedMeasure={selectedMeasure}
         onSelectMeasure={handleSelectMeasure}
-        onSeekMeasure={transport.seekToMeasure}
+        onSeekMeasure={handleActivateMeasure}
         playingMeasure={transport.state.currentMeasure}
         isPlaying={transport.state.isPlaying}
+        followPlayhead={transport.followPlayhead}
+        onEditingChange={handleEditingChange}
         onSetChord={handleSetChord}
         onRemoveChord={handleRemoveChord}
         onMoveChord={handleMoveChord}
@@ -375,7 +422,20 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         pendingAnnotation={pendingAnnotation}
         onConsumePendingAnnotation={consumePendingAnnotation}
       />
-      {ENABLE_PLAYBACK && <Transport controls={transport} />}
+      {/* Hidden multi-file picker for the recording (audio + .bpm [+ .json]). */}
+      <input
+        ref={audioInputRef}
+        type="file"
+        accept="audio/*,.wav,.mp3,.m4a,.bpm,.json"
+        multiple
+        hidden
+        onChange={(e) => {
+          void handleAudioFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+      {/* The transport appears only once a recording is loaded (M13). */}
+      {transport.state.hasAudio && <Transport controls={transport} />}
     </div>
   );
 }

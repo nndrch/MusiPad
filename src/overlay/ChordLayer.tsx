@@ -1,5 +1,6 @@
 import {
   memo,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -27,7 +28,8 @@ interface ChordLayerProps {
   doc: Document;
   /** Bumps on every command edit so we re-read the (in-place-mutated) DOM. */
   revision: number;
-  /** Editing affordances are hidden while playing (the chart is display-only). */
+  /** Drives the layer's `is-playing` class (an inert styling hook now). Chord
+   *  editing stays enabled during playback (M13). */
   isPlaying: boolean;
   /** Add or replace the chord on a beat (parent dispatches + auditions). */
   onSetChord: (
@@ -46,6 +48,9 @@ interface ChordLayerProps {
     toMeasure: number,
     toEntry: number,
   ) => void;
+  /** Report when the chord editor opens/closes (M13) — lets the score suspend
+   *  the playing-bar auto-scroll while editing during playback. */
+  onEditingChange?: (open: boolean) => void;
 }
 
 interface Coord {
@@ -90,8 +95,9 @@ const DRAG_THRESHOLD = 4;
  *     **add** a chord at that beat.
  *   • **existing chord** → the pill **highlights** (accent) on hover; click it to
  *     **edit / remove**.
- * All edits go through the command layer (undoable). While playing this is
- * display-only so bar click-to-seek (M5) and the playhead aren't blocked.
+ * All edits go through the command layer (undoable) and stay enabled **during
+ * playback** (M13): pills and the ＋ stopPropagation, so editing never triggers
+ * the bar click-to-seek / play-pause underneath.
  *
  * Lives inside `.osmd-scale` (rides the zoom transform, like the M5 overlay);
  * the editor popover portals to the body in screen space so it isn't scaled.
@@ -107,6 +113,7 @@ export const ChordLayer = memo(function ChordLayer({
   onRemoveChord,
   onPreview,
   onMoveChord,
+  onEditingChange,
 }: ChordLayerProps) {
   const { entries, frame } = useMeasureBoxes(osmdRef, hostRef, renderSignal);
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -121,6 +128,14 @@ export const ChordLayer = memo(function ChordLayer({
     for (const c of chords) map.set(`${c.measureIndex}:${c.entryIndex}`, c);
     return map;
   }, [chords]);
+
+  // Tell the score when the editor is open, so it suspends the playing-bar
+  // auto-scroll while editing during playback (keeps the popover anchored).
+  useEffect(() => {
+    if (!editor) return;
+    onEditingChange?.(true);
+    return () => onEditingChange?.(false);
+  }, [editor, onEditingChange]);
 
   if (!frame || entries.length === 0) return null;
 
@@ -155,7 +170,7 @@ export const ChordLayer = memo(function ChordLayer({
   }
 
   function startPillDrag(e: ReactPointerEvent<HTMLButtonElement>, from: Coord) {
-    if (isPlaying || editor) return;
+    if (editor) return;
     e.stopPropagation();
     const layer = layerRef.current;
     const scale =
@@ -287,7 +302,6 @@ export const ChordLayer = memo(function ChordLayer({
           }
 
           // Empty slash → a hover zone over the note that reveals a ＋ above it.
-          if (isPlaying) return null;
           return (
             <div
               key={`${a.measureIndex}:${a.entryIndex}`}

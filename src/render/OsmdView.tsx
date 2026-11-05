@@ -64,6 +64,11 @@ interface OsmdViewProps {
   pendingAnnotation: number | null;
   /** Called once the pending annotation editor has been opened (M7). */
   onConsumePendingAnnotation: () => void;
+  /** Whether the playing bar auto-scrolls into view (M13 toggle). */
+  followPlayhead?: boolean;
+  /** Report when any overlay editor opens/closes (M13) — App pauses playback
+   *  at the playhead when editing starts. */
+  onEditingChange?: (open: boolean) => void;
 }
 
 /**
@@ -96,6 +101,8 @@ export function OsmdView({
   onMoveAnnotation,
   pendingAnnotation,
   onConsumePendingAnnotation,
+  followPlayhead,
+  onEditingChange,
 }: OsmdViewProps) {
   // Bump a render signal after each successful OSMD render so the overlay
   // re-projects its measure boxes; also forward the instance to App (M2).
@@ -210,6 +217,7 @@ export function OsmdView({
               playingMeasure={playingMeasure}
               isPlaying={isPlaying}
               scrollRef={scrollRef}
+              followPlayhead={followPlayhead}
             />
             <SlashLayer
               osmdRef={osmdRef}
@@ -227,6 +235,7 @@ export function OsmdView({
               onRemoveChord={onRemoveChord}
               onMoveChord={onMoveChord}
               onPreview={onPreviewChord}
+              onEditingChange={onEditingChange}
             />
             <MarkLayer
               variant="section"
@@ -242,6 +251,7 @@ export function OsmdView({
               onMove={onMoveSection}
               pendingEdit={null}
               onPendingEditConsumed={NO_PENDING_EDIT}
+              onEditingChange={onEditingChange}
             />
             <MarkLayer
               variant="annotation"
@@ -257,6 +267,7 @@ export function OsmdView({
               onMove={onMoveAnnotation}
               pendingEdit={pendingAnnotation}
               onPendingEditConsumed={onConsumePendingAnnotation}
+              onEditingChange={onEditingChange}
             />
             {/* Page-layout chrome (M10): the document header on sheet 1, and a
                 page number on every later sheet. Absolutely positioned in the

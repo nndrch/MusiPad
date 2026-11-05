@@ -16,6 +16,7 @@
 import type { PlaybackSchedule } from './schedule';
 import { quarterToSeconds } from './schedule';
 import type { Synth } from './synth';
+import type { AudioTrack } from './AudioTrack';
 
 /**
  * Minimal control surface over the visual playhead. The OSMD adapter (wired in
@@ -44,6 +45,8 @@ export interface TransportState {
    * audio clock as everything else, so the highlight stays in step with sound.
    */
   currentMeasure: number;
+  /** A recording is loaded (M13) — gates the transport UI (App). */
+  hasAudio: boolean;
 }
 
 const LOOKAHEAD_SEC = 0.12; // schedule this far ahead of the playhead
@@ -72,6 +75,13 @@ export class Player {
 
   private playing = false;
   private metronomeEnabled = false;
+  /** The real recording (M13). When set it is the transport's clock + sound;
+   *  the synth only clicks the metronome. Null ⇒ no transport (App gates it). */
+  private track: AudioTrack | null = null;
+  /** audioTime = scoreTime + audioOffsetSec — the recording's lead-in trim
+   *  (~one bar). Set automatically from the tempo/meter when a track loads
+   *  (M13); see `setTrack`. Not user-adjustable. */
+  private audioOffsetSec = 0;
 
   /** Authoritative playhead while paused; while playing, derived from the clock. */
   private positionSec = 0;
@@ -89,10 +99,18 @@ export class Player {
     this.onChange = onChange;
   }
 
-  /** (Re)load a schedule + cursor. Stops playback and resets to the top. */
+  /**
+   * (Re)load a schedule + cursor. Normally stops playback and resets to the top
+   * — but if a recording is *playing*, the rebuild keeps it going: the timing
+   * arrays below are tempo-derived and unchanged by a chord edit, so the review
+   * loop (edit chords while listening) isn't interrupted by the re-render.
+   */
   load(schedule: PlaybackSchedule, cursor: CursorController): void {
-    this.stopTimer();
-    this.synth.allOff();
+    const keepPlaying = this.track != null && this.playing;
+    if (!keepPlaying) {
+      this.stopTimer();
+      this.synth.allOff();
+    }
     this.schedule = schedule;
     this.cursor = cursor;
 
@@ -117,19 +135,45 @@ export class Player {
     this.measureSecs = schedule.measureStartQuarters.map((q) =>
       quarterToSeconds(q, schedule.tempoSegments),
     );
-    this.durationSec = schedule.totalSeconds;
+    // The recording (if loaded) owns the timeline; else the chart's length.
+    this.durationSec = this.track ? this.track.duration : schedule.totalSeconds;
 
-    this.playing = false;
-    this.positionSec = 0;
-    this.shownOnsetIdx = -1;
-    this.syncCursor(0);
-    // Idle state: positioned at the top but hidden until the user plays/scrubs.
-    this.cursor?.hide();
+    if (keepPlaying) {
+      // Re-sync the metronome pointer to where the audio is now.
+      this.nextMetroIdx = firstIndexAtOrAfter(
+        this.metroSecs,
+        this.getPosition() - this.audioOffsetSec,
+      );
+    } else {
+      this.playing = false;
+      this.positionSec = 0;
+      this.shownOnsetIdx = -1;
+      this.syncCursor(0);
+      // Idle state: positioned at the top but hidden until the user plays/scrubs.
+      this.cursor?.hide();
+    }
     this.emit();
   }
 
   play(): void {
     if (!this.schedule || this.playing) return;
+
+    // M13 — recording mode: the <audio> element is the clock + sound; the synth
+    // only clicks the metronome (no chord scheduling).
+    if (this.track) {
+      void this.synth.resume();
+      this.playing = true;
+      if (this.getPosition() >= this.durationSec) this.track.seek(0);
+      this.nextMetroIdx = firstIndexAtOrAfter(
+        this.metroSecs,
+        this.getPosition() - this.audioOffsetSec,
+      );
+      void this.track.play();
+      this.startTimer();
+      this.emit();
+      return;
+    }
+
     // Restart from the top if we're parked at the end.
     if (this.positionSec >= this.durationSec) {
       this.positionSec = 0;
@@ -148,6 +192,14 @@ export class Player {
 
   pause(): void {
     if (!this.playing) return;
+    if (this.track) {
+      this.track.pause();
+      this.playing = false;
+      this.stopTimer();
+      this.synth.allOff();
+      this.emit();
+      return;
+    }
     this.positionSec = this.getPosition();
     this.playing = false;
     this.stopTimer();
@@ -163,6 +215,17 @@ export class Player {
   /** Jump to `sec` (clamped). Works whether playing or paused. */
   seek(sec: number): void {
     if (!this.schedule) return;
+    if (this.track) {
+      const t = Math.max(0, Math.min(sec, this.durationSec || this.track.duration));
+      this.track.seek(t);
+      this.synth.allOff();
+      this.nextMetroIdx = firstIndexAtOrAfter(
+        this.metroSecs,
+        t - this.audioOffsetSec,
+      );
+      this.emit();
+      return;
+    }
     const target = Math.max(0, Math.min(sec, this.durationSec));
     this.synth.allOff();
     this.positionSec = target;
@@ -184,7 +247,10 @@ export class Player {
    */
   seekToMeasure(i: number): void {
     if (i < 0 || i >= this.measureSecs.length) return;
-    this.seek(this.measureSecs[i]);
+    // In recording mode the seek bar is the audio timeline, so map bar→audio.
+    this.seek(
+      this.track ? this.measureSecs[i] + this.audioOffsetSec : this.measureSecs[i],
+    );
   }
 
   /**
@@ -206,13 +272,19 @@ export class Player {
     if (this.playing) {
       this.nextMetroIdx = firstIndexAtOrAfter(
         this.metroSecs,
-        this.getPosition(),
+        this.getPosition() - (this.track ? this.audioOffsetSec : 0),
       );
     }
     this.emit();
   }
 
   getPosition(): number {
+    if (this.track) {
+      const max = this.durationSec || this.track.duration;
+      return max > 0
+        ? Math.max(0, Math.min(this.track.currentTime, max))
+        : Math.max(0, this.track.currentTime);
+    }
     if (this.playing) {
       return Math.max(
         0,
@@ -225,6 +297,30 @@ export class Player {
   dispose(): void {
     this.stopTimer();
     this.synth.allOff();
+    this.track?.dispose();
+    this.track = null;
+  }
+
+  /**
+   * Attach (or clear) the real recording (M13). When set it becomes the
+   * transport's clock + sound; disposes any previous track. Duration follows the
+   * audio once its metadata loads.
+   */
+  setTrack(track: AudioTrack | null, audioOffsetSec = 0): void {
+    this.stopTimer();
+    this.synth.allOff();
+    if (this.track && this.track !== track) this.track.dispose();
+    this.track = track;
+    this.audioOffsetSec = audioOffsetSec;
+    this.playing = false;
+    if (track) {
+      this.durationSec = track.duration;
+      track.whenReady(() => {
+        this.durationSec = track.duration;
+        this.emit();
+      });
+    }
+    this.emit();
   }
 
   // ─── internals ──────────────────────────────────────────────────────────
@@ -243,6 +339,10 @@ export class Player {
 
   private tick(): void {
     if (!this.schedule || !this.playing) return;
+    if (this.track) {
+      this.tickTrack();
+      return;
+    }
     const pos = this.getPosition();
     const windowEnd = pos + LOOKAHEAD_SEC;
 
@@ -288,8 +388,44 @@ export class Player {
     this.emit();
   }
 
+  /**
+   * Recording-mode tick (M13): schedule metronome clicks against the audio clock
+   * and advance the bar-highlight; no chord scheduling (the recording is the
+   * sound). Clicks are re-anchored to the sampled audio position each tick, so
+   * they never drift from the track.
+   */
+  private tickTrack(): void {
+    if (!this.track) return;
+    const audioPos = this.getPosition();
+    const scorePos = audioPos - this.audioOffsetSec;
+    const windowEnd = scorePos + LOOKAHEAD_SEC;
+
+    if (this.metronomeEnabled) {
+      while (
+        this.nextMetroIdx < this.metroSecs.length &&
+        this.metroSecs[this.nextMetroIdx] < windowEnd
+      ) {
+        const i = this.nextMetroIdx++;
+        this.synth.click(
+          this.synth.now + (this.metroSecs[i] - scorePos),
+          this.metroAccents[i],
+        );
+      }
+    }
+
+    if (
+      audioPos >= (this.durationSec || this.track.duration) ||
+      this.track.ended
+    ) {
+      this.finish();
+      return;
+    }
+    this.emit();
+  }
+
   private finish(): void {
     this.playing = false;
+    this.track?.pause();
     this.positionSec = this.durationSec;
     this.stopTimer();
     this.synth.allOff();
@@ -346,12 +482,14 @@ export class Player {
 
   private emit(): void {
     const pos = this.getPosition();
+    const scorePos = this.track ? pos - this.audioOffsetSec : pos;
     this.onChange({
       positionSec: pos,
       durationSec: this.durationSec,
       isPlaying: this.playing,
       metronome: this.metronomeEnabled,
-      currentMeasure: this.measureAt(pos),
+      currentMeasure: this.measureAt(scorePos),
+      hasAudio: this.track != null,
     });
   }
 }
