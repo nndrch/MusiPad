@@ -1,19 +1,43 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import { LocalFileIO } from './io/LocalFileIO';
 import type { ScoreIO } from './io/ScoreIO';
 import { parseXml, serializeXml } from './model/xmlDoc';
-import { applyDefaults, type DefaultsApplied } from './model/defaults';
+import {
+  applyDefaults,
+  normalizeSectionBarlines,
+  type DefaultsApplied,
+} from './model/defaults';
+import { applySlashGrid } from './model/slashGrid';
 import { readScoreInfo } from './model/scoreInfo';
 import { OsmdView } from './render/OsmdView';
+import type { ViewMode } from './render/useOsmd';
 import { Transport } from './audio/Transport';
 import { useTransport } from './audio/useTransport';
 import { useScoreEditor } from './store/useScoreEditor';
 import { setKeySignature } from './commands/key';
 import { transpose } from './commands/transpose';
 import { setTempo } from './commands/tempo';
-import { removeChordAt, setChordAt } from './commands/chord';
+import { setMeter } from './commands/meter';
+import { moveChord, removeChordAt, setChordAt } from './commands/chord';
 import { barSlashState, setBarSlashes } from './commands/slashes';
+import {
+  addSection,
+  editSection,
+  moveSection,
+  removeSection,
+} from './commands/section';
+import {
+  addAnnotation,
+  editAnnotation,
+  moveAnnotation,
+  removeAnnotation,
+} from './commands/annotation';
+import {
+  firstFreeMeasure,
+  readChartAnnotations,
+  readChartSections,
+} from './model/directions';
 import { voicingFromSpec } from './audio/voicing';
 import type { ChordSpec } from './model/chordSymbol';
 import { Dropzone } from './ui/Dropzone';
@@ -21,7 +45,6 @@ import { Topbar } from './ui/Topbar';
 import { Toolbar } from './ui/Toolbar';
 import { Banner } from './ui/Banner';
 import './App.css';
-import './print.css';
 
 /**
  * App shell (M1). Empty state → dropzone; once a score loads, the topbar +
@@ -46,6 +69,13 @@ export default function App() {
       // Assign C major / 120 BPM if the file is missing them (PRD §11);
       // `defaults` (a fresh object per load) drives the dismissible alert.
       setDefaults(applyDefaults(parsed));
+      // M9: normalize every bar to a per-beat slash grid (the chart's bars are
+      // uniform slashes) so the displayed grid == the editable DOM and a chord
+      // attaches to any beat. Folded into the load baseline like the defaults.
+      applySlashGrid(parsed, { force: true });
+      // M9: open pre-existing section bars with the double barline (PRD §6.5),
+      // folded into the load baseline like the key/tempo defaults above.
+      normalizeSectionBarlines(parsed);
       setDoc(parsed);
       setFileName(file.name);
       setIo(fileIo);
@@ -129,7 +159,46 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
   // #3); adding/updating also auditions the new chord (B6.12) via the same
   // voicing path playback uses. `previewChord` is a stable callback, so these
   // handlers keep a stable identity (the memoized chord layer doesn't churn).
-  const { previewChord, seek, seekToMeasure } = transport;
+  const { previewChord, seekToMeasure, loadAudio, toggle, pause } = transport;
+
+  // The playhead's current bar (a ref so the add-handlers below stay stable
+  // across the ~per-bar updates during playback). Used to target the current
+  // bar when adding a section/note while playing (M13).
+  const currentMeasureRef = useRef(transport.state.currentMeasure);
+  useEffect(() => {
+    currentMeasureRef.current = transport.state.currentMeasure;
+  }, [transport.state.currentMeasure]);
+
+  // Starting any edit (opening a chord/mark editor) pauses the recording at the
+  // playhead; the reviewer resumes manually (M13). Pause-only, never auto-resume.
+  const handleEditingChange = useCallback(
+    (open: boolean) => {
+      if (open) pause();
+    },
+    [pause],
+  );
+
+  // Recording (M13): load the paired stabilised audio + its `.bpm` via a hidden
+  // multi-file picker. The generated chart carries no tempo, so the `.bpm` drives
+  // playback; the audio then plays in sync and the bar-highlight follows it (§6.7).
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const openAudioPicker = useCallback(() => audioInputRef.current?.click(), []);
+  const handleAudioFiles = useCallback(
+    async (files: FileList | null) => {
+      if (!files || files.length === 0) return;
+      const list = Array.from(files);
+      const audioFile = list.find(
+        (f) =>
+          f.type.startsWith('audio/') ||
+          /\.(wav|mp3|m4a|aac|ogg|flac)$/i.test(f.name),
+      );
+      if (!audioFile) return;
+      const bpmFile = list.find((f) => /\.bpm$/i.test(f.name));
+      const bpm = bpmFile ? parseFloat((await bpmFile.text()).trim()) : 0;
+      loadAudio(audioFile, bpm);
+    },
+    [loadAudio],
+  );
   const auditionSpec = useCallback(
     (spec: ChordSpec) => {
       const voicing = voicingFromSpec(spec);
@@ -150,44 +219,108 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
     },
     [dispatch],
   );
+  const handleMoveChord = useCallback(
+    (fromM: number, fromE: number, toM: number, toE: number) => {
+      dispatch(moveChord(fromM, fromE, toM, toE));
+    },
+    [dispatch],
+  );
 
   // Download (M7): serialize the live DOM (commands mutate it in place, so this
   // captures every edit) and save through the IO seam (PRD §7.5). `serializeXml`
   // re-emits the captured declaration/DOCTYPE and unedited regions stay
-  // byte-identical to the load baseline (Invariant #2). No success toast in M7 —
-  // deferred to M9 (ui-decisions A4). Print is browser-native via `@media print`.
-  const handleDownload = useCallback(() => {
+  // byte-identical to the load baseline (Invariant #2). The tool's deliverable —
+  // surfaced as "Export" in M12 (Print retired; see PrintView, kept dormant).
+  const handleExport = useCallback(() => {
     void io.save(serializeXml(doc));
   }, [io, doc]);
-  const handlePrint = useCallback(() => window.print(), []);
+
+  // View mode (M10, PRD §6.6): paginated A4 pages vs continuous scroll.
+  // Defaults to page layout (the print-friendly showcase); toggled in the topbar.
+  const [viewMode, setViewMode] = useState<ViewMode>('page');
 
   // Bar selection (M5) — ephemeral *view* state, not a Command (Invariant #3
   // governs DOM mutations; selection touches neither the DOM nor undo/redo).
   // Cleared when a new score loads, via the adjust-state-in-render pattern
   // (same as the banner below) to avoid a setState-in-effect cascade.
   const [selectedMeasure, setSelectedMeasure] = useState<number | null>(null);
+  // Bar whose annotation editor should auto-open after ＋Note (M7); the
+  // annotation overlay consumes it once opened.
+  const [pendingAnnotation, setPendingAnnotation] = useState<number | null>(null);
   const [selectionDoc, setSelectionDoc] = useState(doc);
   if (selectionDoc !== doc) {
     setSelectionDoc(doc);
     setSelectedMeasure(null);
+    setPendingAnnotation(null);
   }
 
-  // Selecting a bar **cues the play-start**: Play begins from the selected bar;
-  // with nothing selected it plays from the top. We do this by seeking the
-  // (paused) playhead to the bar on select, and back to 0 on deselect — so the
-  // transport just plays from its current position. While playing we don't seek
-  // here: bar clicks already seek via onSeekMeasure (B5.8), and Esc/deselect
-  // must not yank playback back to the start.
-  const isPlaying = transport.state.isPlaying;
-  const handleSelectMeasure = useCallback(
-    (measureIndex: number | null) => {
-      setSelectedMeasure(measureIndex);
-      if (!isPlaying) {
-        if (measureIndex == null) seek(0);
-        else seekToMeasure(measureIndex);
-      }
+  // Section + annotation authoring (M7) — undoable commands. The target bar is
+  // the selected one if a bar is selected; otherwise we drop the mark on the
+  // first bar that has no mark of that kind, so a toolbar add never silently
+  // overwrites an existing one (B7.2/B7.3). If every bar already has that mark
+  // and nothing is selected, it's a no-op. ＋Note also queues the new
+  // annotation's inline editor to open (pendingAnnotation).
+  const handleAddSection = useCallback(
+    (label: string) => {
+      const playhead = currentMeasureRef.current;
+      const target =
+        selectedMeasure ??
+        (playhead >= 0
+          ? playhead
+          : firstFreeMeasure(
+              doc,
+              readChartSections(doc).map((s) => s.measureIndex),
+            ));
+      if (target == null) return;
+      pause();
+      dispatch(addSection(target, label));
     },
-    [isPlaying, seek, seekToMeasure],
+    [dispatch, doc, selectedMeasure, pause],
+  );
+  const handleAddAnnotation = useCallback(() => {
+    const annotated = readChartAnnotations(doc).map((a) => a.measureIndex);
+    const playhead = currentMeasureRef.current;
+    const target =
+      selectedMeasure ??
+      (playhead >= 0 ? playhead : firstFreeMeasure(doc, annotated));
+    if (target == null) return;
+    pause();
+    // Skip a no-op dispatch (and its phantom undo step) if the bar already has
+    // an annotation (the selected/current bar may) — just reopen its editor.
+    if (!annotated.includes(target)) {
+      dispatch(addAnnotation(target, ''));
+    }
+    setPendingAnnotation(target);
+  }, [dispatch, doc, selectedMeasure, pause]);
+  const handleEditSection = useCallback(
+    (measureIndex: number, label: string) =>
+      dispatch(editSection(measureIndex, label)),
+    [dispatch],
+  );
+  const handleRemoveSection = useCallback(
+    (measureIndex: number) => dispatch(removeSection(measureIndex)),
+    [dispatch],
+  );
+  const handleMoveSection = useCallback(
+    (from: number, to: number) => dispatch(moveSection(from, to)),
+    [dispatch],
+  );
+  const handleEditAnnotation = useCallback(
+    (measureIndex: number, text: string) =>
+      dispatch(editAnnotation(measureIndex, text)),
+    [dispatch],
+  );
+  const handleRemoveAnnotation = useCallback(
+    (measureIndex: number) => dispatch(removeAnnotation(measureIndex)),
+    [dispatch],
+  );
+  const handleMoveAnnotation = useCallback(
+    (from: number, to: number) => dispatch(moveAnnotation(from, to)),
+    [dispatch],
+  );
+  const consumePendingAnnotation = useCallback(
+    () => setPendingAnnotation(null),
+    [],
   );
 
   // Slash toggle (M7): the toolbar control acts on the selected bar.
@@ -201,6 +334,25 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
     if (selectedMeasure == null || !slashState?.slashable) return;
     dispatch(setBarSlashes(selectedMeasure, !slashState.allSlashed));
   }, [dispatch, selectedMeasure, slashState]);
+
+  const hasAudio = transport.state.hasAudio;
+  // Selection is pure *view* state (Invariant #3) — it never moves the playhead,
+  // so editing a chord and clicking away can't yank playback back to the start.
+  const handleSelectMeasure = useCallback(
+    (measureIndex: number | null) => setSelectedMeasure(measureIndex),
+    [],
+  );
+  // Clicking a bar drives playback (M13): seek the recording to that bar and
+  // toggle play/pause — a click starts playing from there, and a click while
+  // playing pauses at it. No-op without a recording (the transport is hidden).
+  const handleActivateMeasure = useCallback(
+    (measureIndex: number) => {
+      if (!hasAudio) return;
+      seekToMeasure(measureIndex);
+      toggle();
+    },
+    [hasAudio, seekToMeasure, toggle],
+  );
 
   // Dismissible alert when defaults were assigned on load (PRD §11). Reset when
   // a new file loads (a fresh `defaults` object) by adjusting state in render.
@@ -235,8 +387,11 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         canRedo={canRedo}
         onUndo={undo}
         onRedo={redo}
-        onDownload={handleDownload}
-        onPrint={handlePrint}
+        onExport={handleExport}
+        onLoadAudio={openAudioPicker}
+        audioLoaded={transport.state.hasAudio}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
         onClose={onClose}
       />
       <Toolbar
@@ -244,6 +399,9 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
         onSetKey={(fifths, mode) => dispatch(setKeySignature(fifths, mode))}
         onTranspose={(semitones) => dispatch(transpose(semitones))}
         onSetTempo={(bpm) => dispatch(setTempo(bpm))}
+        onSetMeter={(beats, beatType) => dispatch(setMeter(beats, beatType))}
+        onAddSection={handleAddSection}
+        onAddAnnotation={handleAddAnnotation}
         slashState={slashState}
         onToggleSlashes={handleToggleSlashes}
       />
@@ -256,18 +414,43 @@ function Score({ doc, fileName, defaults, io, onClose }: ScoreProps) {
       <OsmdView
         doc={doc}
         info={info}
+        viewMode={viewMode}
         onRendered={handleRendered}
         revision={revision}
         selectedMeasure={selectedMeasure}
         onSelectMeasure={handleSelectMeasure}
-        onSeekMeasure={transport.seekToMeasure}
+        onSeekMeasure={handleActivateMeasure}
         playingMeasure={transport.state.currentMeasure}
         isPlaying={transport.state.isPlaying}
+        followPlayhead={transport.followPlayhead}
+        onEditingChange={handleEditingChange}
         onSetChord={handleSetChord}
         onRemoveChord={handleRemoveChord}
+        onMoveChord={handleMoveChord}
         onPreviewChord={auditionSpec}
+        onEditSection={handleEditSection}
+        onRemoveSection={handleRemoveSection}
+        onMoveSection={handleMoveSection}
+        onEditAnnotation={handleEditAnnotation}
+        onRemoveAnnotation={handleRemoveAnnotation}
+        onMoveAnnotation={handleMoveAnnotation}
+        pendingAnnotation={pendingAnnotation}
+        onConsumePendingAnnotation={consumePendingAnnotation}
       />
-      <Transport controls={transport} />
+      {/* Hidden multi-file picker for the recording (audio + .bpm [+ .json]). */}
+      <input
+        ref={audioInputRef}
+        type="file"
+        accept="audio/*,.wav,.mp3,.m4a,.bpm,.json"
+        multiple
+        hidden
+        onChange={(e) => {
+          void handleAudioFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+      {/* The transport appears only once a recording is loaded (M13). */}
+      {transport.state.hasAudio && <Transport controls={transport} />}
     </div>
   );
 }

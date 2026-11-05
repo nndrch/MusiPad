@@ -7,6 +7,8 @@
  * major/minor, MusicXML allows the church modes and `none`, and non-traditional
  * keys (`key-step`/`key-alter`) with no `fifths` — all handled gracefully.
  */
+import { feelWordsDirection } from './directions';
+
 export interface ScoreInfo {
   /** Song title (`work-title`, falling back to `movement-title`), or null. */
   title: string | null;
@@ -21,6 +23,13 @@ export interface ScoreInfo {
   keyMode: string | null;
   /** Quarter-notes per minute, or null if none is written. */
   tempo: number | null;
+  /** Time-signature numerator (`beats`) of the first `<time>`, or null. */
+  meterBeats: number | null;
+  /** Time-signature denominator (`beat-type`) of the first `<time>`, or null. */
+  meterBeatType: number | null;
+  /** Whether an `attributes/time` exists — the Meter control only edits an
+   *  existing one (like Key relabels an existing key, M4/M8). */
+  hasMeter: boolean;
   /** Style/feel marking, e.g. "Medium Swing" — Berklee lead-sheet convention. */
   style: string | null;
 }
@@ -71,6 +80,7 @@ const MODE_FIFTHS_OFFSET: Record<string, number> = {
 
 export function readScoreInfo(doc: Document): ScoreInfo {
   const { fifths, mode } = readKeySignature(doc);
+  const { beats, beatType } = readMeter(doc);
   return {
     title: readTitle(doc),
     key: readKey(doc),
@@ -78,7 +88,32 @@ export function readScoreInfo(doc: Document): ScoreInfo {
     keyFifths: fifths,
     keyMode: mode,
     tempo: readTempo(doc),
+    meterBeats: beats,
+    meterBeatType: beatType,
+    hasMeter: doc.querySelector('attributes time') != null,
     style: readStyle(doc),
+  };
+}
+
+/** Numerator/denominator of the chart's first time signature — for the Meter
+ *  control (M8). A meter with no `beats`/`beat-type` (e.g. `senza-misura`)
+ *  reads as null so the control shows no value rather than guessing. */
+function readMeter(doc: Document): {
+  beats: number | null;
+  beatType: number | null;
+} {
+  const time = doc.querySelector('attributes time');
+  const beats = Number.parseInt(
+    time?.querySelector('beats')?.textContent ?? '',
+    10,
+  );
+  const beatType = Number.parseInt(
+    time?.querySelector('beat-type')?.textContent ?? '',
+    10,
+  );
+  return {
+    beats: Number.isNaN(beats) ? null : beats,
+    beatType: Number.isNaN(beatType) ? null : beatType,
   };
 }
 
@@ -123,11 +158,12 @@ function readTitle(doc: Document): string | null {
 /**
  * Style/feel marking — by lead-sheet convention the first free-text `words`
  * direction at the top of the chart (first measure), e.g. "Medium Swing".
+ * Shares `feelWordsDirection` with the render clone and the annotation layer so
+ * a user annotation in measure 1 is never mistaken for the feel chip (M7).
  */
 function readStyle(doc: Document): string | null {
-  const firstMeasure = doc.querySelector('part measure');
-  const words = firstMeasure
-    ?.querySelector('direction direction-type words')
+  const words = feelWordsDirection(doc)
+    ?.querySelector('direction-type words')
     ?.textContent?.trim();
   return words || null;
 }

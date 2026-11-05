@@ -65,6 +65,44 @@
   cursor: default;
 }
 
+/* Page ↔ Full segmented toggle (M10, PRD §6.6). Quiet grayscale; the active
+   segment reads as pressed (white on the off-white track), keeping the orange
+   accent reserved for Download / playback per §6.1. */
+.topbar__viewtoggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.topbar__seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.topbar__seg:hover {
+  color: var(--text);
+}
+
+.topbar__seg[aria-pressed='true'] {
+  background: var(--bg);
+  border-color: var(--border-strong);
+  color: var(--text);
+  font-weight: 500;
+}
+
 /* Quiet, grayscale icon button (PRD §6.1). */
 .topbar__btn {
   display: inline-flex;

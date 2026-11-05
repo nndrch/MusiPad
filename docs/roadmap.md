@@ -6,15 +6,27 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 
 ---
 
-## Current state (2026-06-08)
+## Current state (2026-11-05)
 
-- **Shipped:** M0 (Scaffold), M1 (Load + Render), M2 (Playback), M3 (Command layer + Undo/Redo), M4 (Global edits), **M5 (Overlay projector + Selection + bar-highlight playhead)**, and **M6 (Chords — own pills + dropdown chord editor)** are all merged to `main` (M4 [PR #6](https://github.com/nndrch/MusiPad/pull/6) `784cd81`; M5 [PR #7](https://github.com/nndrch/MusiPad/pull/7) `91207eb`; M6 [PR #9](https://github.com/nndrch/MusiPad/pull/9) `ca9160d`).
+- **Shipped (merged to `main`):** **M0 → M13** — Scaffold, Load + Render, Playback, Command layer + Undo/Redo, Global edits, Overlay projector + Selection + bar-highlight playhead, Chords (dropdown), Sections + Annotations + Download + Print, Meter / time-signature editing, **M9 — Simplified chord-chart rendering**, **M10 — A4 page layout + view toggle + print**, **M11 — Drag-to-reorder chords**, **M12 — Export corrected MusicXML + retire Print**, and **M13 — Audio-synced review playback** (M13 [PR #22](https://github.com/nndrch/MusiPad/pull/22) `6ed1e49`; M12 [PR #21](https://github.com/nndrch/MusiPad/pull/21) `7ec6f48`; M11 [PR #19](https://github.com/nndrch/MusiPad/pull/19) `84da876`; M10 [PR #18](https://github.com/nndrch/MusiPad/pull/18) `87ff3dd`; M9 [PR #17](https://github.com/nndrch/MusiPad/pull/17) `19518d9`; M8 [PR #16](https://github.com/nndrch/MusiPad/pull/16) `b8418e1`; M7 [PR #15](https://github.com/nndrch/MusiPad/pull/15) `8235d8d`; M6 [PR #9](https://github.com/nndrch/MusiPad/pull/9) `ca9160d`).
+- **Next direction — chord-chart simplification + A4 pages (post-M8 feedback, 2026-06-15).** Extended-team feedback reframed the tool as a friendly **chord-chart editor** (later a lead-sheet editor), explicitly **not** a Sibelius/MuseScore competitor. Two new milestones land ahead of the old Polish pass:
+  - **M9 — Simplified chord-chart rendering: ✅ shipped** ([PR #17](https://github.com/nndrch/MusiPad/pull/17)). Slashes + chords only; clef/key hidden; section double barlines; real DOM normalized on load; Playback + Download disabled.
+  - **M10 — A4 page layout + view toggle + print:** paginated **A4** pages (4 bars/row, breaks between systems) with a **page-layout ↔ fullscreen** toggle; Print reproduces the A4 layout cleanly. Reuses the P4 hidden-second-OSMD `pageFormat:'A4_P'` foundation; downloadable PDF stays in P4. PRD §6.6 / §9 M10.
+  - **M11 — Drag-to-reorder chords (snap to slashes):** drag a chord pill onto another beat to move/reorder it, snapping to the nearest slash (promoted from post-MVP P17, 2026-06-15). PRD §9 M11.
+  - **M12 — Polish** (renumbered): toasts, empty/error states, keyboard shortcuts, design audit. _(Renumbered again to **M15** under the 2026-06-16 reframe below.)_
+- **Next direction — audio-synced review layer (2nd-presentation feedback, 2026-06-16).** The 2nd presentation re-anchored the tool as the **human revision layer** over the **Session Materials Creator** (`audio-tools`) output: a **MusicXML chord chart + a beat-stabilised recording** (audio warped to a constant-tempo grid). The reviewer corrects the algorithm's first-pass chords **against the actual recording**, then exports. Three milestones land ahead of the (now final) Polish pass — full specs in [PRD §9](./musicxml-editor-prd.md):
+  - **M12 — Export corrected MusicXML + retire Print:** surface the already-built serialize→download as **Export**; remove **Print** from the UI (not this tool's job). Mostly flag/label flips.
+  - **M13 — Audio-synced review playback:** load the paired `_stabilised.wav` (manual **Load audio**) and play the **real recording** with the bar-highlight following + auto-scroll, plus a **metronome** guide; seek by bar; alignment nudge. Re-enables the flag-gated transport, swapping synth chords for the recording. **Needs a real WAV + MusicXML fixture for QA.** PRD §6.7 / §9 M13.
+  - **M14 — Chord picker: root × quality double dropdown:** replace the editor combobox with two dropdowns (+ optional `/ bass`).
+  - **M15 — Polish** (renumbered from M12): the final MVP pass.
 - **M6 — Chords: complete.** Shipped as the **dropdown** chord editor ([PR #9](https://github.com/nndrch/MusiPad/pull/9)): own HTML pills matching OSMD's engraving + an **editable combobox** (type a symbol or pick from the dropdown of the root's qualities), for add / edit / remove, undoable, with in-editor audition. A structured root/quality/bass **picker + enharmonic respell** (the former "M6b") was prototyped on `2026-06-08` but **dropped as too complex for the MVP**; the idea is parked in [`post-mvp-improvements.md`](./post-mvp-improvements.md) **P8** in case it's ever wanted.
-- **Latest merged:** **M6** ([PR #9](https://github.com/nndrch/MusiPad/pull/9)) — own HTML chord pills matching OSMD's engraving + the **dropdown** chord editor (add via hover-＋, edit/remove via the pill, undoable, with in-editor audition).
+- **M7 — Sections, Annotations, Download + Print (shipped):** Standard MusicXML `<direction placement="above">` marks: boxed rehearsal-mark **Sections** (`<rehearsal enclosure="square">`) and free-text **Annotations** (`<words>`, tagged `data-musipad="annotation"`), one of each per bar (snap-to-bar); inline edit, drag-to-snap (move), remove, all undoable; rendered as HTML overlays (`MarkLayer`) stripped from the OSMD render clone. Plus the earlier **Download** (serialize → `.musicxml`, prolog preserved) and **Print** (`@media print`, score only). _M7 merged via [PR #15](https://github.com/nndrch/MusiPad/pull/15); latest shipped is now **M9** ([PR #17](https://github.com/nndrch/MusiPad/pull/17))._
 - **Live preview:** https://musipad.vercel.app (Vercel project `nndrchs-projects/musipad`; GitHub connected → pushes to `main` deploy production, branches/PRs get preview URLs).
-- **Planning:** a 3-milestone post-MVP re-weigh (CLAUDE.md rule 6) at M3 promoted three low-hanging items into milestones — **title subline → M4** (shipped), **bar-highlight playhead → M5**, **basic Print → M7**. During M5 scoping the human also pulled **auto-scroll → M5** (was post-MVP P3). A4 PDF generation stays post-MVP. The **M6 re-weigh (2026-06-08)** then promoted **meter / time-signature editing (P7) → new M8** — its own focused milestone after M7, so M7 stays tight — and renumbered **Polish → M9**; everything else stays deferred (P9 note-audition and P10 lead-sheet-editor are product-direction/epic work, not MVP milestones).
-- **Next:** **M7 — Slashes, Sections, Annotations, Download + Print**, then **M8 — Meter / time-signature editing** (promoted from P7), then **M9 — Polish**.
-- **Captured requests:** none outstanding — the **meter / time-signature editing** request (2026-06-08) was **promoted to M8** in the M6 re-weigh (see Planning); full scope lives in the M8 milestone (PRD §9) and **P7** is now a promoted stub.
+- **Planning:** a 3-milestone post-MVP re-weigh (CLAUDE.md rule 6) at M3 promoted three low-hanging items into milestones — **title subline → M4** (shipped), **bar-highlight playhead → M5**, **basic Print → M7**. During M5 scoping the human also pulled **auto-scroll → M5** (was post-MVP P3). A4 PDF generation stays post-MVP. The **M6 re-weigh (2026-06-08)** then promoted **meter / time-signature editing (P7) → new M8** — its own focused milestone after M7, so M7 stays tight — and renumbered **Polish → M9** (now **M12**, after the chord-chart pivot — see _Next direction_ above); everything else stays deferred (P9 note-audition and P10 lead-sheet-editor are product-direction/epic work, not MVP milestones).
+- **In flight:** none. **M14** (root × quality picker) is next; **M15 — Polish** the final MVP pass. **M13** shipped via [PR #22](https://github.com/nndrch/MusiPad/pull/22) after external review on the Vercel preview.
+- **QA process (from 2026-06-17):** milestones are reviewed by **external users on the PR's Vercel preview URL** before merge to `main` (not a local checklist).
+- **Captured requests / new post-MVP (2026-06-15):** the post-M8 feedback added **P15** (compound-meter felt-pulse slash grouping — the alternative to the chosen numerator slashes) and **P16** (authoring — create a chart from scratch / add bars). The earlier meter request was promoted to M8 (now shipped; **P7** is a promoted stub).
+- **Captured requests / reframe (2026-06-16, 2nd presentation):** drove the **audio-synced review layer** (M12–M15 above). New post-MVP entries: **P18** (auto-pair the WAV off the `_stabilised.wav` naming convention + read `.bpm`/`.json` sidecars), **P19** (waveform scrub / loop / count-in), **P20** (lead-in offset robustness / optional synth-voice re-introduction). The retired synth chord-realization (M2) is captured in **P3**; Print retirement is noted in **P4**.
 
 ---
 
@@ -30,9 +42,15 @@ A living log of milestones, their PRs/commits, and what's next — so anyone (hu
 | M4  | Global edits (Key, Transpose, Tempo) + title subline                    | ✅ Done    | [#6](https://github.com/nndrch/MusiPad/pull/6)          | `784cd81`             |
 | M5  | Overlay projector + Selection + bar-highlight playhead + auto-scroll    | ✅ Done    | [#7](https://github.com/nndrch/MusiPad/pull/7)          | `91207eb`             |
 | M6  | Chords (dropdown) — own pills + dropdown chord editor (add/edit/remove) | ✅ Done    | [#9](https://github.com/nndrch/MusiPad/pull/9)          | `ca9160d`             |
-| M7  | Slashes, Sections, Annotations, Download + Print                        | ⏳ Planned | —                                                       | —                     |
-| M8  | Meter / time-signature editing (promoted from P7)                       | ⏳ Planned | —                                                       | —                     |
-| M9  | Polish                                                                  | ⏳ Planned | —                                                       | —                     |
+| M7  | Sections, Annotations, Download + Print                                 | ✅ Done    | [#15](https://github.com/nndrch/MusiPad/pull/15)        | `8235d8d`             |
+| M8  | Meter / time-signature editing (promoted from P7)                       | ✅ Done    | [#16](https://github.com/nndrch/MusiPad/pull/16)        | `b8418e1`             |
+| M9  | Simplified chord-chart rendering (slashes + chords only)                | ✅ Done    | [#17](https://github.com/nndrch/MusiPad/pull/17)        | `19518d9`             |
+| M10 | A4 page layout + view toggle + print                                    | ✅ Done    | [#18](https://github.com/nndrch/MusiPad/pull/18)        | `87ff3dd`             |
+| M11 | Drag-to-reorder chords (snap to slashes; from P17)                       | ✅ Done    | [#19](https://github.com/nndrch/MusiPad/pull/19)        | `84da876`             |
+| M12 | Export corrected MusicXML + retire Print                                | ✅ Done    | [#21](https://github.com/nndrch/MusiPad/pull/21)        | `7ec6f48`             |
+| M13 | Audio-synced review playback (recording + metronome; edit pauses at playhead) | ✅ Done    | [#22](https://github.com/nndrch/MusiPad/pull/22)        | `6ed1e49`             |
+| M14 | Chord picker: root × quality double dropdown                             | ⏳ Planned | —                                                       | —                     |
+| M15 | Polish (renumbered from M12)                                            | ⏳ Planned | —                                                       | —                     |
 
 Legend: ✅ done · 🟡 in flight · ⏳ not started.
 
@@ -112,11 +130,77 @@ M6 was planned as **two PRs** (2026-06-07, see [`ui-decisions.md`](./ui-decision
 
 **M6b — structured picker + respell: DROPPED (2026-06-08).** The planned root/quality/bass button picker + enharmonic letter+accidental selector + collapsible bass + in-editor respell was prototyped and verified (24/24 headless) on `feat/m6b-chord-picker`, but on review the human judged it **too complex for an MVP** — "keep it simple as a dropdown with a list of chords." The work was **discarded uncommitted** (never merged) and the branch deleted; the editor stays the M6a dropdown. The idea is parked in [`post-mvp-improvements.md`](./post-mvp-improvements.md) **P8** if it's ever wanted. Consequence: A3's right-click context-menu primitive is now first needed in **M7** (note respell, B7.4).
 
-### M7–M9 ⏳ Planned
+### M7 — Sections, Annotations, Download + Print ✅
 
-- **M7** Slashes (per-note notehead), draggable sections/annotations, Download (serialize → `.musicxml`, prolog preserved). **+ Print** (`@media print`, score only).
-- **M8** Meter / time-signature editing — promoted from post-MVP **P7** in the M6 re-weigh (2026-06-08): hover-edit the staff time signature → undoable `Command` patching `attributes/time`, re-deriving the beat math (`schedule.ts` metronome/measure lengths) + slash grid. Its own milestone after M7 (kept out of M7 to avoid bloating it).
-- **M9** Polish: toasts, empty/error states, keyboard shortcuts, design audit.
+- **Scope (final):** Download + Print (shipped earlier in M7, `d30ffe8`) **+ Sections + Annotations** ([PR #15](https://github.com/nndrch/MusiPad/pull/15)). The two **note-level** items were de-scoped to post-MVP — slash toggle → **P11** (built, on `post-mvp/slash-toggle`), note respell + A3 menu → **P12** (both 2026-06-08).
+- **Download + Print:** Download serializes the live DOM → `.musicxml` (XML prolog/DOCTYPE preserved, Invariant #2); Print uses `@media print` to emit the score only.
+- **Sections + Annotations:** two chart-authoring marks, both **standard MusicXML** `<direction placement="above">` in the part — **Section** = boxed rehearsal mark (`<direction-type><rehearsal enclosure="square">LABEL</rehearsal>`), **Annotation** = free text (`<direction-type><words>TEXT</words>`, the `<direction>` tagged `data-musipad="annotation"` so MusiPad notes are identified by content, not document position — protecting the Feel chip, the first untagged `<words>` in measure 1). One section + one annotation max per measure, keyed by `measureIndex` (snap-to-bar).
+- **Authoring:** toolbar group — `＋Section` preset dropdown (Intro / Verse / Chorus / Bridge / Solo / Outro / Custom…) and `＋Note` button. Target = the selected bar, else the first bar with no mark of that kind (auto first-empty, so a toolbar add never overwrites); no-op if all bars occupied and nothing selected.
+- **Edit / move / remove:** inline edit (click → input, Enter commit / Esc cancel / blur commit); drag a pill/text to snap it to another bar (move command, whole-part snapshot undo); remove via Backspace (selected) or ×. All operations undoable.
+- **Rendering:** marks are HTML overlays drawn by a single generic [`overlay/MarkLayer.tsx`](../src/overlay/MarkLayer.tsx) (mounted twice — `variant="section"` and `variant="annotation"`), stripped from the OSMD render clone (`buildRenderDoc`) so OSMD doesn't double-draw them. Marks stack above the chord row (annotation in the base row, section one row up when both are present). OSMD `EngravingRules` opened up (`MinimumDistanceBetweenSystems`, `MinSkyBottomDistBetweenSystems`, `PageTopMargin`, `ChordSymbolYPadding`) so marks clear the staff.
+- **New files:** [`model/directions.ts`](../src/model/directions.ts) (`feelWordsDirection`, `readChartSections`, `readChartAnnotations`, `firstFreeMeasure`, `tagAnnotation`/`isAnnotation`), [`commands/section.ts`](../src/commands/section.ts), [`commands/annotation.ts`](../src/commands/annotation.ts), `overlay/MarkLayer.tsx` + `.css`. **Modified:** `App.tsx`, `render/OsmdView.tsx`, `render/useOsmd.ts`, `model/scoreInfo.ts`, `ui/Toolbar.tsx` + `.css`.
+- **AC (PRD §9 M7):** ✅ add section + annotation, drag to another bar, all undoable; ✅ download → reopening shows all edits, unedited measures byte-identical to load baseline, declaration/DOCTYPE intact; ✅ Print = clean score-only page.
+- **Recorded trade-off ([P13](./post-mvp-improvements.md)):** `data-musipad="annotation"` is a non-schema custom attribute on `<direction>` — the W3C MusicXML XSD doesn't define `data-*`, so a strict schema validator could reject a downloaded file. Accepted for robust, position-independent annotation identification; a schema-legal carrier is parked in P13.
+
+### M8 — Meter / time-signature editing ✅ ([PR #16](https://github.com/nndrch/MusiPad/pull/16))
+
+- Promoted from post-MVP **P7** (M6 re-weigh, 2026-06-08). Hover/click-edit the staff time signature → undoable `setMeter` ([`commands/meter.ts`](../src/commands/meter.ts)) patching `attributes/time` (`beats`/`beat-type`, siblings preserved), re-deriving the beat math (`schedule.ts` metronome grid + measure lengths) and reflowing slash bars to the new meter. Toolbar Meter control reads/writes the **single governing meter** (first `<time>`, like Key); mid-piece / multiple `<time>` changes parked in **P14**.
+
+### M9 — Simplified chord-chart rendering ✅ ([PR #17](https://github.com/nndrch/MusiPad/pull/17))
+
+From the post-M8 extended-team feedback (2026-06-15): reframe MusiPad as a friendly **chord-chart editor** (not a notation suite) and render minimally.
+
+- Delivered: clef and key-signature glyphs hidden via `EngravingRules`; noteheads/stems painted transparent so melody disappears visually while the DOM is preserved. Every bar **normalized to the per-beat slash grid on load** (`force:true` in `handleFile`) so the editable DOM matches the display and chord-add works on any beat. Own `SlashLayer` SVG overlay (diagonal strokes, geometry from VexFlow stave). Section-start **double barline** persisted as `light-light` left barline (`barline.ts` helpers), wired into add/remove/move section, and normalized on load for pre-existing sections (`normalizeSectionBarlines`). `MarkLayer` divider anchored to `staffTopY`/`staffBottomY`. Download and Playback UI disabled (`ENABLE_DOWNLOAD` / `ENABLE_PLAYBACK` flags).
+- Verified: `eslint`/`tsc`/`vite build` clean; PRD §9 M9 AC met.
+
+### M10 — A4 page layout + view toggle + print ✅ ([PR #18](https://github.com/nndrch/MusiPad/pull/18))
+
+Adds the §6.6 page-layout view and the **Page ↔ Full** toggle (default **Page**), and replaces the M7 single-SVG print with a clean paginated A4 print.
+
+- **Screen — one OSMD instance, page format toggled by `viewMode`** (`Endless` for Full, `A4_P` for Page). Page mode stacks A4 sheets in the existing `.osmd-scale` zoom-to-fit column. The overlay projector ([`overlay/projector.ts`](../src/overlay/projector.ts)) became **page-aware**: it maps each measure to its page (via `ParentMusicSystem.Parent`) and adds the page's top offset — read live from each OSMD page-wrapper's `offsetTop` — so the single overlay layer spans the column and every pill/slash/mark/selection lands on the right sheet. Coordinates reset per page (OSMD renders one `<svg>` per page), so this offset is the whole trick; one funnel (`useMeasureBoxes`) means the 5 overlay components were untouched. Continuous mode = one page = offset 0 = byte-for-byte the old behaviour.
+- **Page chrome:** the title + Key·Tempo header is drawn on sheet 1; later sheets get a page number — both absolutely positioned in the sheet margins (`OsmdView`, from `computePageRects`). Sheets are styled as white paper on a faint desk with an inter-sheet gap.
+- **Print — a dedicated off-screen A4 render** ([`render/PrintView.tsx`](../src/render/PrintView.tsx), the post-mvp **P4** recipe): a hidden OSMD at `A4_P` inks the chords/slashes/sections itself (no HTML overlay to break across pages), each page `<svg>` captured into its own `.print-sheet` (`break-after: page`). `Print` runs `await printView.prepare()` then `window.print()`; [`print.css`](../src/print.css) hides the live app and reveals the pre-paginated sheets. Closes the M7 mid-system-clipping limitation.
+- **AC (PRD §9 M10):** ✅ toggle switches Page ↔ Full; a multi-system chart paginates onto multiple A4 sheets, breaks between systems (no clipped bars); 4 bars/row; page 1 header / later pages page number; Print outputs the clean paginated A4; all edits work in page mode; unedited bars identical to the load baseline (the real DOM is untouched by either view).
+- **Verified:** `eslint`/`tsc -b`/`vite build` clean; headless-Chrome live pass on a new 64-bar sample ([`public/samples/leadsheet.musicxml`](../public/samples/leadsheet.musicxml)) — 3 A4 pages, overlays distributed 128/112/16 across pages, chord editor opens on page 2, header + page numbers placed, Full mode unregressed, Print → 3-page A4 PDF with no clipping.
+- **Deferred (post-MVP):** A4 **PDF download** stays P4; **exact Berklee chord parity on print** — OSMD ignores `<kind text>`, so print shows its house style (`Dm7`/`Cmaj7`) vs the screen pills (`Dmi7`/`CMaj7`); fixable later via OSMD's `setChordSymbolLabelText` (noted in P4). Print slashes are OSMD's slash-noteheads (with stems) rather than the screen's minimal strokes.
+
+### M11 — Drag-to-reorder chords (snap to slashes) ✅ ([PR #19](https://github.com/nndrch/MusiPad/pull/19))
+
+Lets a chord pill be **dragged onto another beat** — within a bar or across bars — snapping to the nearest slash, mirroring the M7 section/annotation drag-to-snap. Promoted from post-MVP **P17**.
+
+- **`moveChord(fromMeasure, fromEntry, toMeasure, toEntry)`** ([`commands/chord.ts`](../src/commands/chord.ts)) — **relocates the whole `<harmony>` element** (so its `kind/@text`, `inversion`, `degree`, `frame`, `@type` ride along, Invariant #2), drops a stale beat `<offset>` (snaps onto the target beat), and **overwrites** any chord already there. Snapshots the `<part>` for the inverse since a move can touch two measures (like `MoveSection`); undoable.
+- **`ChordLayer` drag** — clones `MarkLayer`'s pointer-capture flow on the pills: `pointerdown` captures, `pointermove` past a 4px threshold becomes a drag (else it's still a click → opens the editor), the nearest beat **anchor under the pointer** is the snap target (highlighted with a dashed `.chord-drop` box), `pointerup` dispatches `moveChord` when the target differs. The dragged pill follows the pointer (keeping its −50% centering); screen↔unscaled uses the layer's live rect-vs-frame scale, so it's correct in **both** view modes (page + full).
+- Wired `onMoveChord` through `OsmdView` → `App` (`handleMoveChord` → `dispatch(moveChord(...))`).
+- **AC (PRD §9 M11):** ✅ drag a chord to another slash (same bar and across bars) → it moves and snaps; the `<harmony>` moves with it (persists in the DOM/download); click-to-edit still works (drag threshold); undo/redo reverts the move.
+- **Verified:** `eslint`/`tsc -b`/`vite build` clean; headless-Chrome drag pass on the A4 page-layout sample — within-bar move, across-bar move with overwrite, undo reverts, click-to-edit preserved, drop-target highlight + dragging-pill affordances render.
+
+### M12 — Export corrected MusicXML + retire Print ✅ ([PR #21](https://github.com/nndrch/MusiPad/pull/21))
+
+- **Why:** the revision layer's deliverable is the corrected `.musicxml`; Print isn't its job (2026-06-16 reframe). PRD §9 M12.
+- **Export:** flipped on the already-built serialize→download (`serializeXml` + `LocalFileIO.save`, was gated by `ENABLE_DOWNLOAD`); relabeled **Download → Export**; topbar primary, always shown.
+- **Retire Print:** removed the Print button + `Printer` icon and unwired `PrintView`/`printRef`/`handlePrint` **and the `./print.css` import** (its `@media print` rules would otherwise blank the page on Cmd+P). `PrintView.tsx`/`print.css` kept dormant in the tree (P4). Page/Full toggle untouched.
+- **AC:** Export downloads the live DOM as `.musicxml` (declaration/DOCTYPE preserved); reopening shows edits, unedited bars byte-identical to baseline; Print gone; Page/Full intact.
+- **Shipped (2026-06-16):** headless-verified on both samples — Export preserves the prolog (decl + DOCTYPE on `chart.musicxml`; none on `leadsheet.musicxml`, matching source), Print absent, page visible under print media, no page errors; `lint` + `build` clean. `src/App.tsx`, `src/ui/Topbar.tsx`. _No longer planned._
+
+### M13 ✅ Shipped — Audio-synced review playback ([PR #22](https://github.com/nndrch/MusiPad/pull/22))
+
+- **Why:** the headline of the reframe — review the chart **against the recording** (PRD §6.7 / §9 M13).
+- **Load audio** (manual multi-file pick: `_stabilised.wav` + `.wav.bpm`) → `AudioTrack` (`<audio>`) becomes the transport's clock + sound; `synth.playChord` retired from the transport (synth keeps the metronome click + editor audition). Tempo from the **`.bpm`** (charts carry no `<sound tempo>`); **bar 1 = audio `t=0`** (no offset/nudge — confirmed by ear).
+- **Follow-along** bar-highlight + auto-scroll with a **Follow toggle** (default on); **metronome** re-anchored each tick (no drift). **Bar-click = seek + play/pause**; selection is pure view state. Transport renders only with audio (replaces `ENABLE_PLAYBACK`).
+- **Edit against the recording:** opening any editor / ＋chord / ＋Note / ＋Section **pauses at the playhead** (manual resume; `Player.load` preserves the track). ＋Section/＋Note target `selectedMeasure ?? playhead ?? firstFree`.
+- **Fixture:** a real `Pulse_and_Shine_*` pair (audio + `.musicxml` + `.bpm` + `.json`), **gitignored**.
+- **Deferred:** auto-pairing → **P18**; waveform / loop / count-in → **P19**; offset control if exports vary / optional synth voice → **P20**.
+- **AC:** play → recording + synced highlight; metronome on the beat; bar-click seeks + play/pauses; starting an edit pauses at the playhead, resume continues; Follow toggle stops auto-scroll; ＋marks land on the selected/current bar; no transport without audio; DOM untouched (Invariant #3). _Verified: lint + build + headless harness + real fixture; external QA on the PR preview, then merged (`6ed1e49`)._
+
+### M14 ⏳ Planned — Chord picker: root × quality double dropdown
+
+- **Why:** faster, more discoverable chord entry (requested 2026-06-16). PRD §9 M14.
+- Replace the `ChordEditor` combobox with **Root × Quality** dropdowns (+ optional `/ bass`, default None, so slash chords don't regress). Compose → `ChordSpec` → unchanged `setChordAt`. Keep N.C., Hear, Add/Update, Remove, keyboard nav.
+- **AC:** picking Root + Quality (+ bass) writes the same `<harmony>` as the combobox; editing pre-selects; Hear auditions; remove + undo; pills render identically.
+
+### M15 ⏳ Planned — Polish (renumbered from M12)
+
+- **M15 — Polish:** toasts, empty/error states, keyboard shortcuts, design audit (renumbered from the old M9 → M12 → M15) — the final pass, also auditing the new audio transport, double-dropdown editor, and Export.
 
 ---
 

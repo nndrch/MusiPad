@@ -17,24 +17,31 @@ These override default behavior and apply to **every** milestone and change.
 
 ## 1. Context & Problem
 
-An upstream "audio-to-preproduction" pipeline (Demucs, Basic Pitch, MSAF, madmom, key/tempo estimation) turns audio into a MusicXML score. The output is a good start but **inaccurate** — wrong chords, mislabeled sections, off key/tempo. There is currently no way for a human to correct it without leaving for desktop software.
+An upstream tool — the **Session Materials Creator** (`audio-tools`: Demucs, Basic Pitch / crema, MSAF, madmom, key/tempo estimation) — turns a recording into two synchronized artifacts: a **MusicXML chord chart** and a **beat-stabilised audio track** (the recording warped to a constant-tempo grid, so the audio and the chart's bars line up). The chords are a **first-pass algorithmic detection** — a good start but **inaccurate** (wrong chords, mislabeled sections, off key/tempo). There is currently no way for a human to correct it without leaving for desktop software.
 
-This tool is a **browser-based correction layer** for **chord charts**: load the generated MusicXML, fix the high-value metadata (chords, sections, key, tempo, slashes), **hear the chords play back** in the chart's rhythm, and export a corrected MusicXML. It is **not** a blank-canvas notation editor and does **not** need publishing-grade engraving.
+This tool is the **browser-based revision layer** over those artifacts: load the generated MusicXML, **play back the actual recording in sync with the chart** (the current bar highlights and follows; a metronome clicks as a timing guide), fix the high-value metadata against what you hear (chords, sections, key, tempo, slashes), and **export the corrected MusicXML** for production. It is **not** a blank-canvas notation editor and does **not** need publishing-grade engraving.
+
+**Positioning (2026-06-15).** MusiPad is a friendly, **user-friendly chord-chart editor** — and, later, a lead-sheet editor — explicitly **not** a competitor to full notation suites like **Sibelius or MuseScore**. To set that expectation in the product itself, the chart renders **minimally**: only **bars, chord symbols, and a per-beat slash grid** — no clef, no key-signature glyph, no written melody (see §6.5). The simpler the surface, the clearer the promise.
 
 ## 2. Goals
 
-- Load a MusicXML (`.xml` / `.musicxml` / `.mxl`) in the browser and render it.
+- Load a MusicXML (`.xml` / `.musicxml` / `.mxl`) in the browser and render it as a **minimal chord chart** — bars, chord symbols, and a per-beat slash grid (§6.5).
 - Correct: **key signature**, **transpose**, **enharmonic spelling** (per chord/note), **tempo/BPM**, **per-beat chord symbols** (dropdown UI), **per-bar rhythm slashes**, **draggable section marks and annotations**.
-- **In-browser chord-chart playback:** this tool is primarily for editing and **playing chord charts**, so playback realizes the **chord symbols** (audible harmony) in the chart's rhythm — the headline audio feature, more central than melodic note playback. It reflects edits (tempo, transpose, chord changes).
+- **Play the recording in sync (review playback):** load the paired beat-stabilised track and play the **actual recording**, with the current bar highlighting and auto-scrolling to follow it and a **metronome** clicking as a timing guide — so the reviewer corrects the chart against what they hear. (Replaces the earlier synthesized chord playback; see §3.)
 - **Undo/redo** for every edit.
-- Export the corrected MusicXML as a download.
+- **Export** the corrected MusicXML as a download — the tool's output of record.
+- **Page layout:** view the chart as paginated **A4** pages — with a **page-layout ↔ fullscreen** toggle (§6.6). (Print is retired from the UI — see §3 — the deliverable is the exported MusicXML, not paper.)
 - A calm, minimal, **Notion-like "notepad"** UI.
 
 ## 3. Non-Goals (PoC)
 
 - No backend, no auth, no persistence beyond download. (Designed for easy backend swap later — see §10.)
 - No note **entry**/deletion, no beaming/voicing/lyrics editing, no engraving controls.
-- No playback of the **written placeholder pitches**. On a chord chart the notes are slash/rhythm markers (e.g. a repeated `B4`), so we sound the **active chord** at each onset instead, not the written pitch. (Melodic playback of real note pitches is out of scope for the PoC.)
+- **No synthesized playback.** Playback is the **paired stabilised recording** (§6.7), not audio we generate — we don't synthesize the chord symbols and we never sound the written placeholder pitches (the noteheads are slash/rhythm markers). The earlier synth chord-realization (M2) is **retired from the transport**; the synth survives only for the metronome click and the chord editor's audition. Re-introducing a synthesized voice is post-MVP.
+- **No melody / standard notation.** The chart shows only **bars, chord symbols, and a per-beat slash grid** (§6.5). On load, every bar is **normalized to that slash grid** — the source note content is replaced by slashes (a chord chart has no melody; no clef, key-signature glyph, beamed rhythms, or noteheads ever appear). A deliberate simplification (§1 positioning), not a missing feature.
+- **No print.** A paginated browser Print existed through M10 but is **retired from the UI** (the deliverable is the exported MusicXML, not paper). The print render code stays dormant; an A4 PDF export remains post-MVP (P4).
+- **No automatic audio pairing.** The recording is loaded by an explicit user action ("Load audio"). MusiPad does **not** read the sibling WAV off disk by naming convention, open folders, or parse the `.bpm`/`.json` sidecars — all post-MVP (P18).
+- **No audio scrubbing / looping / count-in.** Transport is play / pause / seek-to-bar; a waveform, loop region, and count-in are post-MVP (P19).
 - No `.mxl` _writing_ (read `.mxl` is fine via unzip; write plain `.musicxml`).
 - No mobile-first layout (desktop browser is the target).
 
@@ -43,7 +50,7 @@ This tool is a **browser-based correction layer** for **chord charts**: load the
 1. **The model is the MusicXML DOM.** Parse once with `DOMParser`; OSMD is a _view_ re-rendered from the DOM. There is no second source of truth.
 2. **Patch, don't regenerate.** Every edit mutates only the specific nodes it touches; never reconstruct an element from scratch (that drops optional children/attributes the spec allows — `frame`, `inversion`, `degree`, positioning, `print-object`, `type`, `footnote`/`level`, etc.). **Round-trip baseline:** a `DOMParser → XMLSerializer` cycle is _not_ byte-identical to the source (it normalizes self-closing tags, attribute quoting, whitespace, entity escaping). So the invariant is measured against a **normalized-on-load baseline**, not the raw input bytes: serialize the pristine DOM once at load; an unedited region must serialize identically to _that baseline_. Preserve the original XML declaration and DOCTYPE verbatim through the round-trip (XMLSerializer emits neither). This protects upstream data (Basic Pitch notes, stems metadata, etc.).
 3. **Every edit is a Command.** No component mutates the DOM directly. All mutations go through the command layer (§7) so undo/redo and future features come for free.
-4. **Overlays anchor to logical positions, not pixels.** Section marks/annotations store `{measureIndex, beat}`, re-projected to screen coords on every render/resize.
+4. **Overlays anchor to logical positions, not pixels.** Section marks/annotations snap to a whole bar — keyed by `measureIndex` (one section + one annotation max per measure) — while chords anchor to a beat (`{measureIndex, entryIndex}`); all are re-projected to screen coords on every render/resize.
 5. **Keep it boring where it can be.** Add structural seams (command layer, load/save adapter) but no speculative features. Simplicity now, extensibility at the seams.
 
 ---
@@ -51,14 +58,15 @@ This tool is a **browser-based correction layer** for **chord charts**: load the
 ## 5. User Flow (PoC)
 
 ```
-Upload MusicXML  →  Preview (render)  →  Edit  →  Play (chords)  →  Download corrected MusicXML
+Upload chart  →  Load recording  →  Preview (render)  →  Edit  →  Play-along (recording + metronome, bar follows)  →  Export corrected MusicXML
 ```
 
-- **Upload:** drag-drop or file picker. Accept `.xml`, `.musicxml`, `.mxl`. (`.mxl` = zip; unzip to the root `.xml`.)
+- **Upload chart:** drag-drop or file picker. Accept `.xml`, `.musicxml`, `.mxl`. (`.mxl` = zip; unzip to the root `.xml`.)
+- **Load recording** (optional): a **Load audio** button picks the paired beat-stabilised track (`<base>_stabilised.wav`). Until one is loaded, editing works but the transport is hidden.
 - **Preview:** OSMD renders the score on a paper-like canvas.
 - **Edit:** toolbar + inline controls + draggable overlays (details §6, §8).
-- **Play:** transport bar; in-browser **chord-chart playback** — the active chord sounds at each onset in the chart's rhythm (Web Audio soundfont), with a metronome toggle.
-- **Download:** serialize DOM → `.musicxml` file download.
+- **Play-along:** once a recording is loaded, the transport bar appears; play the **actual recording** with the current bar highlighting and auto-scrolling to follow it (§6.7), plus a **metronome** toggle as a timing guide. Click a bar to seek there.
+- **Export:** serialize DOM → `.musicxml` file download — the corrected chart.
 
 ---
 
@@ -116,7 +124,7 @@ Calm, content-first, almost chrome-less. The score is the document; controls are
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│  Topbar: [file name]  Key·Tempo·Feel  [Undo][Redo] [Download]│  ← slim, --surface
+│  Topbar: [file]  Key·Tempo  [Page|Full] [Load audio] [Undo][Redo] [Export]│  ← slim, --surface
 ├───────────────────────────────────────────────────────────┤
 │  Toolbar (inline, quiet): Key ▾  Transpose ±  Tempo [120]  │  ← only global controls
 │                            ＋Section  ＋Note  Slashes:bar    │
@@ -131,8 +139,9 @@ Calm, content-first, almost chrome-less. The score is the document; controls are
 ```
 
 - **Empty state:** centered dropzone, faint dashed border, "Drop a MusicXML file or click to choose." Notepad-blank.
-- **Download** is the only orange (primary) button in the topbar.
-- **Transport (footer):** play/pause, seek bar with playhead (in `--accent`), elapsed / total time, and a **Metronome toggle**. The metronome is a quiet line-icon toggle (`⏱` lucide), grayscale when off, gaining `--accent` when on. When **on**, it emits an audible click on every beat, in time with the song's current tempo (BPM); it follows tempo edits live and re-syncs on play/pause/seek. When **off**, no click is emitted. (Default: off.)
+- **Export** is the only orange (primary) button in the topbar; **Load audio** is a quiet (grayscale) topbar button beside it.
+- **Transport (footer) — recording playback (M13).** Appears **only when a recording is loaded**; otherwise the chart is edit-only. Play/pause the **actual stabilised recording**, seek bar with playhead (in `--accent`), elapsed / total time, a **Follow toggle** (auto-scrolls the playing bar into view — on by default; turn off to keep the page still), and a **Metronome toggle** (`⏱`, quiet line-icon; grayscale off, `--accent` on — clicks every beat over the recording as a place-keeper, default off). Clicking a bar **seeks + play/pauses** there; starting an edit **pauses at the playhead** (§6.7).
+- **View toggle (M10):** a quiet topbar control switches the chart between **Page layout (A4)** and **Fullscreen (continuous)** (§6.6); **Load audio** and **Export** sit alongside it. (Print was retired from the topbar in M12 — §3.)
 
 ### 6.3 Editing interactions
 
@@ -143,7 +152,7 @@ Calm, content-first, almost chrome-less. The score is the document; controls are
   - Existing chords render as clickable pills above their beat; clicking re-opens the same dropdown pre-filled.
 - **Section marks — draggable.** `＋Section` drops a labeled pill (Intro / Verse / Chorus / Bridge / Solo / Outro / custom) at the start of the nearest bar. Drag horizontally → snaps to the nearest barline. Click to rename, ⌫/right-click to remove.
 - **Annotations (notes) — draggable.** `＋Note` drops a small free-text sticky anchored to a bar; drag to re-anchor (snaps to bar), click to edit text, remove via ⌫.
-- **Slashes — per bar.** Select a bar (click its background), toggle `Slashes` on the toolbar → adds/removes rhythm slashes for that bar.
+- **Slashes — always on (M9).** Every bar renders a uniform per-beat slash grid automatically (§6.5); there is no per-bar on/off control in the chart view. _(The earlier per-bar slash **toggle** is deferred — **P11** — moot while all bars show slashes; it re-emerges only with note display, P10.)_
 - **Key:** dropdown of key signatures (relabel only — does NOT move pitches).
 - **Transpose:** stepper (semitones, −12…+12) or interval picker — DOES move pitches and updates the key signature. Distinct control from Key.
 - **Enharmonic relabel:** right-click a note or a chord root → "Respell" (F♯↔G♭ etc.). Spelling only, no pitch change.
@@ -156,6 +165,51 @@ Calm, content-first, almost chrome-less. The score is the document; controls are
 - **Item-level (M6/M7):** hovering an individual item (note, chord, section/annotation) highlights **just that item in 100% accent**, and selecting a bar highlights all items inside it. Editing is figure-level: select a slash → **＋** add a chord; click a chord → **edit** it (chord audition happens inside the editor). Deferred to M6 (chords) / M7 (sections) — needs per-item projection (`docs/ui-decisions.md` B6/B7).
 - Undo/redo buttons disabled (faint) when stack is empty.
 - Toast (quiet, bottom-left) on Download and on parse errors.
+
+### 6.5 Chord-chart rendering model (the simplified view)
+
+> **Added 2026-06-15** from the extended-team feedback (§1 positioning). Reframes what the score _shows_.
+
+The score renders as a **minimal chord chart**, not standard notation. From the loaded MusicXML the view draws **only**:
+
+- **Bars** — one box per `<measure>`; original **barline types preserved** (e.g. `‖` double bars, repeats render where present).
+- **A per-beat slash grid** — every bar shows a uniform set of rhythm slashes, **N = the time signature's beat count (the numerator):** 4/4 → 4, 3/4 → 3, 6/8 → 6, 7/8 → 7. (Compound-meter _felt-pulse_ grouping — 6/8 → 2 — is the post-MVP alternative, **P15**.) Uses the bar's governing meter — the single meter for the MVP (M8 / **P14**).
+- **Chord symbols** — the M6 HTML pills (§6.3), anchored above the slashes. **Multiple chords per bar** are allowed; a chord whose beat offset lands between slashes snaps to the **nearest slash**.
+- **Section marks + annotations** — the M7 overlays (§6.3), carried over unchanged.
+- **A double barline at every section start** — a bar that begins a section opens with a **double barline** (`<barline location="left" bar-style="light-light">`), the chart convention that a new section starts here (the **first bar of the chart is exempt**). This is **persisted** in the MusicXML (not display-only), so it round-trips on download — see M9.
+- The **time signature**, drawn once at the start of each system / page.
+
+**Not drawn:** the **clef**, the **key-signature glyph**, and any **written melody**. On load every bar is **normalized to the slash grid in the real DOM** (the chart's bars become uniform per-beat slashes) — the source note content is _replaced_, not merely hidden. A chord chart has no melody.
+
+**How (M9).** On **load**, every bar is normalized to the per-beat slash grid in the **real DOM** (`applySlashGrid`, run alongside the key/tempo defaults), so the editable document _is_ the slash chart and a chord attaches to any beat. The OSMD **render clone** (`buildRenderDoc`) then hides the clef + key signature and OSMD's own slash/stem glyphs (painted transparent), while we draw our **own minimal slash marks** (`SlashLayer`) centered on the staff — positioned from the **staff-line geometry**, so independent of chords/stems. Real edits (chords, sections, meter) go through the command layer. Invariant #2 holds against the **normalized-on-load baseline** (exactly like the M4 key/tempo defaults): an unedited bar serializes identically to that baseline. Chord/section/annotation overlays project onto the slash onsets.
+
+### 6.6 Page layout & view modes (A4)
+
+> **Added 2026-06-15.** "Render the score as pages" — an A4, print-friendly layout, toggle-able with the continuous view.
+
+The chart has **two view modes**, toggled from the topbar (§6.2):
+
+- **Page layout (A4)** — the chart laid out on **A4 portrait** sheets, broken into **multiple pages** as needed; page breaks fall **between systems, never mid-bar**. **4 bars per row**, fixed (source `<print>` system breaks are ignored here in favor of a consistent grid). **Page 1** carries the document header (title + Key · Tempo subline, M4); **later pages** show a **page number** only. (Through M10 this was also the print-friendly view; **Print is retired in M12** — §3 — so it's now purely an on-screen reading/review layout. An A4 PDF export stays post-MVP, P4.)
+- **Fullscreen (continuous)** — today's single continuous, responsive, zoom-to-fit scroll (no page concept), best for fluid editing.
+
+All editing interactions (select, chord add/edit, section/annotation drag, meter edit) work in **both** modes, and overlays project in both. The default mode is a small M10 call (leaning **page layout**, matching the "render as pages" intent).
+
+**Foundation.** The paginated render reuses the **hidden second OSMD instance at `pageFormat: 'A4_P'`** scoped for the clip-free print / PDF work (post-MVP **P4**) — OSMD lays the score onto A4 pages and breaks only between systems. M10 builds this for the on-screen page view; a downloadable **A4 PDF** (svg2pdf.js + jsPDF) layers on top and stays in **P4**. (Browser **Print** was built here in M10 and retired from the UI in M12 — §3 — with the render code kept dormant.)
+
+### 6.7 Audio-synced review playback (M13)
+
+The whole point of the tool is correcting the chart **against the recording** (§1). The reviewer loads the paired beat-stabilised track + its tempo (**Load audio**, §6.2 — a multi-file pick: the `_stabilised.wav` and its `.wav.bpm` sidecar; `.json` optional). The footer transport then plays the **actual recording** — not synthesized audio (§3) — and the chart follows it:
+
+- **Tempo from the `.bpm`.** Generated charts carry **no `<sound tempo>`**, so playback tempo comes from the `.bpm` sidecar (the constant BPM the recording was warped to). Bar↔time uses that tempo + meter + `divisions` (the `schedule.ts` map since M2); sync holds **by construction** (constant tempo, no mid-file changes). Editing the chart's Tempo control doesn't perturb playback — the `.bpm` governs it.
+- **Alignment.** Chart **bar 1 = audio `t=0`** — no lead-in offset (confirmed by ear: the metronome and highlight start with the song). The recording can run past the last charted bar (an outro); that's expected, not drift.
+- **Follow-along (toggle).** The current bar gets the orange `--accent` wash (the M5 playhead highlight) and **auto-scrolls into view**, driven by the audio's position. A **Follow toggle** (default on) lets the reviewer stop the page from moving during playback.
+- **Metronome guide.** A toggle clicks on every beat over the recording, as a place-keeper. Default off.
+- **Transport by bar-click.** Clicking a bar **seeks there and toggles play/pause** — click a bar to play from it, click again to pause at it. (Clicking a chord / mark / ＋ edits in place and never toggles playback — those stopPropagation.)
+- **Edit while playing → pause at the playhead.** Starting any edit (open a chord or mark editor, ＋chord, ＋Note, ＋Section) **stops the audio exactly where the playhead is**; the reviewer resumes manually. You can edit at any moment without losing your place, and the audio never runs on under the editor.
+- **Add targets the bar you're on.** ＋Section / ＋Note land on the **selected** bar, else the **current (playhead)** bar — so you mark structure where you're listening. Selection itself is pure view state (it never moves the playhead).
+- **No recording loaded.** The transport is hidden; the chart is edit-only.
+
+Loading is a **manual** step — MusiPad does not auto-pair off the `_stabilised.wav` naming convention (post-MVP **P18**).
 
 ---
 
@@ -238,9 +292,11 @@ interface ScoreIO {
 | **Enharmonic respell (chord root)** | one `harmony/root` `root-step`+`root-alter`                                         | Spelling only. (Root may instead be a `numeral` or `function`; PoC edits `root` only but must not corrupt the others.)                          |
 | **Tempo / BPM**                     | `direction/sound[@tempo]` (+ optional visible `direction/direction-type/metronome`) | Quarter-notes per minute; `sound[@tempo]` drives playback, `metronome` is the printed mark — keep them in sync. **A file may have no tempo at all** (real pipeline output often does) and tempo can change mid-piece. `SetTempo` must _create_ both at measure 1 when absent, not assume one exists; playback uses a default (e.g. 120) until set. |
 | **Chord (per beat)**                | `harmony` with `root` (+`kind`, optional `bass`) and `offset` (divisions)           | Schema child order is significant: `root`→`kind`(req)→`inversion`→`bass`→`degree`→`frame`→`offset`→`staff`. On edit, patch `root`/`kind`/`bass` and **preserve** `inversion`/`degree`/`frame`, the `kind/@text` (displayed label, e.g. "maj7"), and `harmony/@type` (`explicit`/`implied`/`alternate`). Dropdown maps UI qualities → the fixed `kind-value` enum (`major`,`minor`,`dominant`,`major-seventh`,`minor-seventh`,`half-diminished`,`diminished`,`augmented`,`suspended-second`/`-fourth`,`major-sixth`/`minor-sixth`,`dominant`/`major`/`minor`-`ninth`/`11th`/`13th`,`power`,`none`, …). Inserted before the note at that beat. |
-| **Slashes (per bar)**               | per-note `note/notehead` text `slash`                                               | **Decided (S1 spike, §11):** OSMD ignores `measure-style/slash`; use per-note `<notehead>slash</notehead>` — which is also what the pipeline already emits. `ToggleBarSlashes` adds/removes the `notehead` child on each note in the bar, capturing the original for the inverse. |
-| **Section mark**                    | `direction/direction-type/rehearsal` at measure start                               | Named section (default square enclosure). Draggable = move the `direction` to another measure; preserve `enclosure`, parent `placement`, positioning and text-formatting attributes on the move.                                |
-| **Annotation**                      | `direction/direction-type/words` anchored to a measure                              | Free text (no default enclosure). Survives in the downloaded file. Draggable = re-parent; preserve formatting/positioning attributes.          |
+| **Slashes (per beat, all bars)**    | per-note `note/notehead` `slash`, N = meter numerator                               | **M9 (§6.5):** every bar is **normalized to a uniform per-beat slash grid in the real DOM on load** (`applySlashGrid`) — source notes replaced by slashes, so the editable chart == the displayed chart and a chord attaches to any beat. Per-note `<notehead>slash</notehead>` (S1 spike, §11). On screen, OSMD's slash glyphs are hidden and our **own** minimal marks drawn (`SlashLayer`, centered via staff geometry). Supersedes the per-bar `ToggleBarSlashes` _toggle_ (parked in **P11**). |
+| **Section mark**                    | `direction/direction-type/rehearsal` (`enclosure="square"`), `placement="above"`, one per measure (keyed by `measureIndex`)    | Named section. Draggable = move the `direction` to another measure; preserve `enclosure`, parent `placement`, positioning and text-formatting attributes on the move. _(Implemented M7.)_                                |
+| **Annotation**                      | `direction/direction-type/words`, `placement="above"`, one per measure; `<direction>` tagged `data-musipad="annotation"`        | Free text (no enclosure). Survives in the downloaded file. Draggable = re-parent; preserve formatting/positioning attributes + the `data-musipad` tag. The tag identifies MusiPad notes by content, not position (distinguishing the Feel/style `<words>`, the first untagged `<words>` in measure 1). `data-*` is a non-schema attribute — see M7 known trade-off (§9). _(Implemented M7.)_          |
+| **Audio-synced playback** (M13)     | _no MusicXML write_ — tempo from the `.bpm` sidecar (charts carry no `<sound tempo>`) + `attributes/time` + `divisions` for bar↔time | Plays the **paired stabilised WAV** (loaded manually with its `.bpm`, §6.7), not synthesized audio. Bar-highlight + auto-scroll (a **Follow** toggle) track the **audio's** clock; the metronome clicks over the recording; **bar 1 = audio `t=0`**. Clicking a bar seeks + play/pauses; starting an edit pauses at the playhead. View-only (Invariant #3) — touches no DOM. **Supersedes M2's synth chord realization for the transport** (synth survives for the metronome click + editor audition). |
+| **Export (save)**                   | serialize `Document` → `.musicxml` (XML declaration + DOCTYPE preserved)                                                        | The tool's deliverable. Whole-DOM `XMLSerializer` via `serializeXml`; Blob download (`LocalFileIO.save`), filename derived from the source. Unedited regions byte-identical to the load baseline (Invariant #2). _(Built in M7 as Download; surfaced as **Export** in M12 with Print retired.)_ |
 
 > Keeping sections/annotations **in the MusicXML** (rehearsal/words) means they round-trip on download with no sidecar — consistent with Invariant #2.
 
@@ -306,13 +362,14 @@ Ships in **two PRs** (see `docs/ui-decisions.md` B6).
 - **M6b (dropped):** a structured **root/quality/bass picker** + **enharmonic toggle** + **respell** was prototyped but **cut as too complex for the MVP** (2026-06-08) — the shipped editor is the dropdown above. The ideas are parked in [`post-mvp-improvements.md`](./post-mvp-improvements.md) **P8**; note respell still lands in M7. Typing already covers every spelling/quality/slash chord.
 - **AC:** Add a per-beat chord; it persists in download; edit & remove work; all undoable. ✅ **Met (M6, [PR #9](https://github.com/nndrch/MusiPad/pull/9)).**
 
-### M7 — Slashes, Sections, Annotations, Download
+### M7 — Sections, Annotations, Download + Print
 
-- Per-bar slash toggle (or fallback). Draggable section marks (rehearsal) + draggable annotations (words), snap-to-bar.
-- Note respell (right-click note).
+- **Sections + Annotations** — two chart-authoring marks, both stored as standard MusicXML `<direction placement="above">` in the part. **Section** = boxed rehearsal mark (`<direction-type><rehearsal enclosure="square">LABEL</rehearsal>`); **Annotation** = free text (`<direction-type><words>TEXT</words>`, the `<direction>` tagged `data-musipad="annotation"` so MusiPad-authored notes are identified by content, not document position — protecting the Feel chip, the first untagged `<words>` in measure 1). One section + one annotation max per measure, keyed by `measureIndex` (snap-to-bar). Authoring: toolbar **＋Section** preset dropdown (Intro/Verse/Chorus/Bridge/Solo/Outro/Custom…) and **＋Note** button; target = the selected bar, else the first bar with no mark of that kind (auto first-empty, so a toolbar add never overwrites; no-op if all occupied and nothing selected). Inline edit (click → input, Enter commit / Esc cancel / blur commit); drag to snap a mark onto another bar (move command, whole-part snapshot undo); remove via Backspace / ×. All undoable. Marks are HTML overlays drawn by `overlay/MarkLayer.tsx` (mounted twice — `variant="section"`/`variant="annotation"`), stripped from the OSMD render clone (`buildRenderDoc`) so OSMD doesn't double-draw them.
 - `LocalFileIO.save` → serialize DOM → download `.musicxml`.
 - **Print** (promoted from post-MVP P4): a Print button beside Download that prints the score via `@media print` CSS — score only (topbar/transport/cursor/overlays hidden). Full client-side **A4 PDF generation** stays in P4.
-- **AC:** Drag a section to another bar; add an annotation; toggle slashes; download → reopening the file shows all edits; unedited measures identical to the load baseline; declaration/DOCTYPE intact. Print produces a clean score-only page.
+- **De-scoped to post-MVP (2026-06-08):** two **note-level** items cut from M7 (value needs note editing P9/P10; our chart notes are un-played slash placeholders) — **per-bar slash toggle → P11** (built, on `post-mvp/slash-toggle`); **note respell + the A3 right-click context menu → P12**. (So section/annotation **remove** uses ⌫/×, not A3.)
+- **Known trade-off ([P13](./post-mvp-improvements.md)):** `data-musipad="annotation"` is a non-schema custom attribute on `<direction>` — the W3C MusicXML XSD doesn't define `data-*`, so a strict schema validator could reject a downloaded file. Accepted for robust annotation identification; a schema-legal carrier is a future item.
+- **AC:** Add a section (boxed rehearsal) and an annotation (free words); drag a mark to another bar; all undoable; download → reopening the file shows all edits; unedited measures identical to the load baseline; declaration/DOCTYPE intact; Print produces a clean score-only page. ✅ **Met (M7, [PR #15](https://github.com/nndrch/MusiPad/pull/15)).**
 
 ### M8 — Meter / time-signature editing
 
@@ -320,11 +377,71 @@ Promoted from post-MVP **P7** in the M6 3-milestone re-weigh (CLAUDE.md rule 6, 
 
 - Make the time signature on the staff **hover/click-editable like chords** (reuse the M6 hover-popover + figure-level overlay pattern): hover the `4/4` → a small "beats / beat-type" popover; commit via an **undoable `Command`** patching `attributes/time` (`beats` + `beat-type`), preserving siblings (`@symbol`, `interchangeable`, `senza-misura`) per Invariant #2.
 - **Not just a label:** meter feeds the beat math — the metronome click grid + measure lengths in `schedule.ts` and the slash-rhythm grid — so an edit must re-derive playback and re-project the overlay. PoC scope may limit to the first/active meter (like Key); mid-piece `<time>` changes are a further wrinkle.
-- **AC:** Edit a bar's meter (e.g. `4/4` → `3/4`); it persists in the DOM/download; the metronome grid, measure length, and slash grid re-derive to match; undoable; unedited measures identical to the load baseline.
+- **AC:** Edit a bar's meter (e.g. `4/4` → `3/4`); it persists in the DOM/download; the metronome grid, measure length, and slash grid re-derive to match; undoable; unedited measures identical to the load baseline. ✅ **Met (M8, [PR #16](https://github.com/nndrch/MusiPad/pull/16)).**
 
-### M9 — Polish
+### M9 — Simplified chord-chart rendering (slashes + chords only)
 
-- Toasts, empty/error states, keyboard shortcuts, hover/active states audit against §6.
+Reframe the view to the minimal chord chart of §6.5 — the headline of the post-M8 extended-team feedback (§1 positioning). Render **only** bars + a per-beat slash grid + chord symbols (plus the M7 section/annotation marks + the time signature); hide the clef, key-signature glyph, and the written melody.
+
+- On **load**, normalize every bar to a uniform per-beat slash grid in the **real DOM** (`applySlashGrid`, N = the active meter's numerator, reusing M8's beat math), so the editable chart _is_ the slash chart and a chord attaches to any beat. The OSMD **render clone** (`buildRenderDoc`) then hides the clef + key signature and OSMD's own slash/stem glyphs; we draw our **own minimal slash marks** (`SlashLayer`) centered on the staff — positioned from the staff-line geometry, so independent of chords/stems.
+- Chords / sections / annotations project onto the slash onsets. Because the real DOM is the grid, a chord attaches to **any** beat of **any** bar (the former mismatch — a chord couldn't be added to a beat lacking an underlying note — is gone).
+- **Section-start double barline.** A bar that starts a section opens with a double barline (first bar exempt). It is **drawn as our own overlay** (`MarkLayer`, from section presence — so it shows for add _and_ move, spanning the staff) and **persisted** as `<barline location="left" bar-style="light-light">` in the DOM (the M7 `AddSection`/`MoveSection`/`RemoveSection` commands manage it; a load-time pass adds it to pre-existing sections). The persisted barline is stripped from the render clone so OSMD doesn't double-draw it.
+- **Rendering (resolved):** OSMD draws the staff + bars + time signature and supplies per-beat x-positions; the clef, key, and OSMD's slash/stem glyphs are suppressed, and we overlay our own minimal slashes (centered via the staff-line geometry) + section dividers. **Playback and Download are disabled** for this milestone (re-enabled later).
+- **AC:** A loaded chart renders as the §6.5 minimal view — bars + N slashes/bar (centered on the staff) + chord pills + section/annotation marks + time signature, **no clef / key glyph / melody**; a **chord can be added to every beat of every bar**; a bar that **starts a section opens with a centered double barline**; undo/redo reverts edits; an unedited bar serializes identically to the normalized-on-load baseline.
+
+### M10 — A4 page layout + view toggle + print
+
+Add the **page-layout** view of §6.6 and the **page-layout ↔ fullscreen** toggle.
+
+- Paginated **A4** render via a hidden second OSMD at `pageFormat: 'A4_P'` (the **P4** foundation): A4 portrait sheets, **4 bars/row** fixed, page breaks **between systems only**. **Page 1** header (title + Key · Tempo); later pages a **page number** only.
+- Topbar **view toggle** (Page ▾ / Full). Fullscreen = the existing continuous zoom-to-fit scroll. Editing interactions and overlay projection work in **both** modes.
+- **Print** (M7) now reproduces the A4 page layout cleanly — multi-page, **no mid-system clipping** — closing the M7 known limitation. A downloadable **A4 PDF** stays in **P4**.
+- **AC:** The toggle switches between A4 pages and continuous scroll; a multi-system chart paginates onto multiple A4 sheets with breaks between systems (no clipped bars); 4 bars/row; page 1 shows the header, later pages a page number; Print outputs the clean paginated A4; all edits still work in page-layout mode; unedited bars byte-identical to the load baseline. ✅ **Met (M10).** _(Deferred: exact Berklee chord-symbol parity on print — OSMD ignores `<kind text>`, so print uses its house style; see [`post-mvp-improvements.md`](./post-mvp-improvements.md) P4. A4 **PDF download** stays P4.)_
+
+### M11 — Drag-to-reorder chords (snap to slashes)
+
+Promoted from post-MVP **P17** (requested 2026-06-15) — scheduled after M10. Let the user **drag a chord pill** onto another beat to move / reorder it, **snapping to the nearest slash** (beat anchor), within a bar or across bars — mirroring the M7 section/annotation drag-to-snap.
+
+- Add drag handlers to the chord pills (§6.3, `ChordLayer`), cloning `MarkLayer`'s pointer-down/move/up → highlight-target → drop flow; a drag threshold separates a drag from the existing click-to-edit.
+- Snap the drop to the nearest beat anchor `{measureIndex, entryIndex}` from the M9 slash grid (the projector already emits one anchor per beat); an off-beat `<harmony>` `offset` snaps to the nearest beat.
+- New `moveChord(fromMeasure, fromEntry, toMeasure, toEntry)` — remove-then-set over `setChordAt` / `removeChordAt`, so it's undoable; dropping on an occupied slash overwrites (matches the section upsert).
+- **AC:** Drag a chord to another slash (same bar and across bars) → it moves and snaps to that beat; the `<harmony>` moves with it and survives download; click-to-edit still works (drag threshold); undo/redo reverts the move. ✅ **Met (M11).**
+
+> **Direction shift (2026-06-16, 2nd-presentation feedback).** MusiPad is reframed as the **revision layer** over the Session Materials Creator's output (§1): the reviewer corrects the chart **against the paired recording**, exports the corrected MusicXML, and never prints. Three milestones land **ahead of the old Polish pass** (which becomes M15): **M12 Export + retire Print**, **M13 Audio-synced playback**, **M14 root×quality picker**. Most of M12/M13 **enables already-built, flag-gated code** (Export, transport, metronome, bar-follow).
+
+### M12 — Export the corrected MusicXML; retire Print
+
+The tool's deliverable is the corrected `.musicxml`; **Print is not its job** (§3). Both changes mostly **surface already-built code**.
+
+- **Export:** flip on the existing serialize→download (built in M7 as Download, gated by `ENABLE_DOWNLOAD`); **relabel Download → Export**; topbar primary.
+- **Retire Print:** remove the Print button from the topbar and unwire the print handler from the rendered UI; keep `PrintView`/`print.css` **dormant** in the tree (cheap to revive — P4).
+- Keep the **Page/Full** toggle (independent of print).
+- **AC:** Export downloads the live DOM as `.musicxml` (declaration + DOCTYPE preserved); reopening shows all edits and unedited bars are byte-identical to the load baseline (Invariant #2); the Print button is gone; the Page/Full toggle still works.
+
+### M13 — Audio-synced review playback
+
+The headline of the reframe (§1, §6.7): play the **paired beat-stabilised recording** and review the chart against it. Reuses the flag-gated engine (scheduler, transport, metronome, bar-highlight follow, auto-scroll); the new work is **swapping the synth chord source for the real track**, **loading the audio + `.bpm`**, and the **edit-against-the-recording** interaction model below. As-built:
+
+- **Load audio:** a manual **Load audio** button (topbar) opens a multi-file pick — the `_stabilised.wav` + its `.wav.bpm` (object URL; `.json` optional). No auto-pairing (P18). `AudioTrack` wraps a plain `<audio>` element (native pause/seek); it becomes the transport's clock + sound. `synth.playChord` is retired from the transport (synth survives for the metronome click + editor audition).
+- **Tempo from `.bpm`:** the generated chart has no `<sound tempo>`, so `buildSchedule(doc, { tempoOverrideBpm })` applies the `.bpm` as one constant tempo; bar↔time (`measureStartQuarters` / `measureAt` / `currentMeasure`) is computed from it. **Bar 1 = audio `t=0`** (no offset).
+- **Follow-along toggle:** the bar-highlight + auto-scroll track the audio position; a **Follow toggle** in the transport (default on) turns the auto-scroll off so the page holds still during playback.
+- **Metronome:** `synth.click` scheduled relative to the audio position sampled each tick (no drift). Toggle; default off.
+- **Transport by bar-click:** clicking a bar **seeks + toggles play/pause** there (`handleActivateMeasure`, gated on `hasAudio`). Selection is pure view state (no seek-on-select). The transport **renders only when a recording is loaded**.
+- **Edit pauses at the playhead:** opening any editor (chord/mark) or adding (＋chord/＋Note/＋Section) **pauses** the recording where the playhead is (via an `onEditingChange`/handler → `transport.pause()`); the reviewer resumes manually. Edits re-render without stopping or restarting the audio (`Player.load` preserves the track).
+- **Add targets:** ＋Section / ＋Note land on `selectedMeasure ?? currentMeasure(playhead) ?? firstFree`.
+- **AC:** with a real chart + WAV + `.bpm`, **play** → the recording plays and the bar-highlight follows in sync; the metronome clicks on the beat; clicking a bar seeks + play/pauses; starting an edit pauses at the playhead and resuming continues from there; the Follow toggle stops auto-scroll; ＋Section/＋Note land on the selected/current bar; no transport without audio; the DOM is untouched by playback (Invariant #3). _(Build/QA used a real `Pulse_and_Shine_*` fixture, gitignored; audio timing verified by ear + headless harness. Deferred: auto-pairing → P18; waveform / loop / count-in → P19; optional synth voice → P20.)_
+
+### M14 — Chord picker: root × quality double dropdown
+
+Requested 2026-06-16: speed up chord entry by replacing the editor's text combobox (§6.3, M6) with **two dropdowns** — root and quality.
+
+- **Root** dropdown (12 chromatic, sensible enharmonic spelling → `rootStep` + `rootAlter`) × **Quality** dropdown (the `SUGGESTION_KINDS`, grouped by family). Compose → `ChordSpec` → the **unchanged** `setChordAt`.
+- **Optional `/ bass`** third dropdown (None + roots) so slash chords (`C/E`) don't regress (the model already has `bassStep`/`bassAlter`); default None. Keep **N.C.**, in-editor **Hear**, Add/Update, Remove, keyboard nav.
+- **AC:** picking Root + Quality (+ optional bass) writes the same `<harmony>` (root → kind → bass, Berklee `@text`, siblings preserved) as the combobox; editing pre-selects the current chord; Hear auditions; remove works; undoable; pills render identically. _(Deferred: structured enharmonic respell / twin-toggle → P8; free-text symbol typing dropped.)_
+
+### M15 — Polish (renumbered from M12)
+
+- Toasts, empty/error states, keyboard shortcuts, hover/active states audit against §6 — the **final pass**, also auditing the new audio transport, double-dropdown editor, and Export.
 - **AC:** Feels like the §6 spec: quiet, grayscale, single orange accent, notepad calm.
 
 ---
@@ -354,6 +471,8 @@ public/
 ## 11. Risks & required spikes
 
 - **OSMD slash rendering** — **resolved (S1, [`spikes.md`](./spikes.md)):** `measure-style/slash` is ignored by OSMD; use per-note `<notehead>slash</notehead>` (also what the pipeline emits). Done.
+- **Minimal render (M9, done)** — the chart normalizes every bar to a per-beat slash grid in the **real DOM on load** (a deliberate transformation folded into the normalized-on-load baseline, like the M4 defaults), hides the clef/key/OSMD-slash glyphs, and overlays our **own** minimal slashes centered via the staff-line geometry (§6.5). Invariant #2 is measured against that baseline.
+- **A4 pagination (M10)** — the on-screen page view + clean Print need page breaks **between systems, never mid-bar**. The single continuous SVG (zoom-to-fit) can't paginate without clipping, so reuse the hidden second-OSMD `pageFormat:'A4_P'` re-render (scoped in **P4**) — the shared core for the page view, clip-free Print, and the P4 PDF.
 - **Chord realization (M2)** — the headline feature carries real risk: mapping the full `kind-value` enum → chord-tone intervals, choosing a register/voicing that sounds good, extracting rhythm from note/slash onsets across meters and large `divisions`, and syncing audio to the OSMD cursor. Budget time; cover common kinds first, degrade gracefully on exotic ones.
 - **osmd-audio-player role** — secondary now (it plays written notes, which are placeholders on charts). Use a Web Audio soundfont for chord audio; if osmd-audio-player is used for timing/cursor, mute its note output. Flag the chosen approach in the M2 PR.
 - **Round-trip normalization** — `DOMParser → XMLSerializer` is **not byte-identical** to the source (self-closing tags, attribute quoting, whitespace, entities all get normalized). Don't promise raw-byte fidelity; measure against a **normalized-on-load baseline** (Invariant #2). Establish the baseline in the load path (M1) and assert against it from M4 onward.
@@ -369,7 +488,7 @@ public/
 
 ## 12. Acceptance (whole PoC)
 
-A user can: drop a generated MusicXML, see it render, fix key/tempo, transpose, add per-beat chords via dropdown, respell enharmonics, toggle slashes, drag section marks and annotations onto bars, **hear the chord chart play back (chords realized in the chart's rhythm)** with a metronome, undo/redo any of it, and download a corrected `.musicxml` whose unedited regions are identical to the normalized load baseline (declaration/DOCTYPE preserved) — all in a quiet grayscale-plus-orange notepad UI.
+A user can: drop a generated MusicXML, see it render as a **minimal chord chart** (bars + chord symbols + a per-beat slash grid; §6.5) — in either a paginated **A4 page** layout or a continuous canvas (§6.6) — **load the paired recording and play it back in sync** (the current bar highlights and auto-scrolls to follow it) with a **metronome** guide (§6.7), fix key/tempo, transpose, edit the meter, add per-beat chords via a **root × quality dropdown**, drag chords / section marks / annotations onto bars, undo/redo any of it, and **export** a corrected `.musicxml` whose unedited regions are identical to the normalized load baseline (declaration/DOCTYPE preserved) — all in a quiet grayscale-plus-orange notepad UI.
 
 ---
 
@@ -385,7 +504,7 @@ npm i -D prettier eslint
 npm run dev
 ```
 
-Then proceed **M0 → M9**, opening one PR per milestone, never advancing past failing acceptance criteria. Keep §4 Invariants visible in the repo (copy them into `CONTRIBUTING.md` or the top of `commands/Command.ts`).
+Then proceed **M0 → M15**, opening one PR per milestone, never advancing past failing acceptance criteria. Keep §4 Invariants visible in the repo (copy them into `CONTRIBUTING.md` or the top of `commands/Command.ts`).
 
 ---
 
@@ -400,6 +519,8 @@ Then proceed **M0 → M9**, opening one PR per milestone, never advancing past f
 - Undo/redo: **command layer from the start** (growth seam for future note editing).
 - UI: **Notion-like notepad**, grayscale + single orange accent (`#E8590C`).
 - IO: **`ScoreIO` adapter**; PoC = local upload/download; future = backend GET/PUT (one-line swap).
+- **Rendering (2026-06-15):** the chart renders **minimally** — bars + chord symbols + a per-beat slash grid only (no clef, key glyph, or melody). Every bar is normalized to that slash grid in the real DOM on load; OSMD draws the staff/bars while we overlay our own minimal slashes (§6.5). Positions MusiPad as a chord-chart editor, not a notation suite (§1).
+- **Page layout (2026-06-15):** an **A4 paginated** view with a **page-layout ↔ fullscreen** toggle, for clean print (§6.6).
 
 ## 15. Open questions (for later, not blocking PoC)
 

@@ -51,3 +51,57 @@
 .osmd-status.is-error {
   color: var(--accent);
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Page layout (M10, PRD §6.6). In `page` mode OSMD renders one <svg> per A4
+ * sheet (pageFormat A4_P), stacked vertically inside `.osmd-host`. We tint the
+ * desk so the white sheets read as paper, give each sheet a quiet border, and
+ * add a gap between them. OSMD wraps each page <svg> in a positioned
+ * `<div id="osmdCanvasPageN">`, so the gap lives on those wrapper divs. The
+ * overlay projector reads each wrapper's live `offsetTop` (`pageTops` in
+ * projector.ts), so changing the gap below moves the overlays with it — no
+ * constant to keep in sync.
+ * ────────────────────────────────────────────────────────────────────────── */
+.osmd-scroll--page {
+  background: var(--surface); /* faint desk so sheets stand out */
+}
+
+.osmd-scroll--page .osmd-host {
+  padding: 8px 0 0; /* desk gutter handled by the scroll padding; sheets centered */
+}
+
+/* Each page sheet (OSMD's per-page wrapper div + its svg). */
+.osmd-scroll--page .osmd-host > div {
+  margin: 0 auto;
+  width: fit-content;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+}
+.osmd-scroll--page .osmd-host > div > svg {
+  display: block;
+}
+
+/* The gap between consecutive A4 sheets (projector reads each wrapper's offsetTop). */
+.osmd-scroll--page .osmd-host > div + div {
+  margin-top: 32px;
+}
+
+/* Document header drawn on sheet 1, and page numbers on later sheets. Both live
+ * inside `.osmd-scale` (so they ride the zoom transform) and sit in the sheet
+ * margins where no staff is drawn. */
+.osmd-sheet-header {
+  position: absolute;
+  padding: 16px 28px 0;
+  pointer-events: none;
+}
+
+.osmd-sheet-number {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-faint);
+  pointer-events: none;
+}

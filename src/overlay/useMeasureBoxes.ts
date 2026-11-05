@@ -51,9 +51,10 @@ export function useMeasureBoxes(
       setResult({ boxes: [], entries: [], frame: null });
       return;
     }
-    const svg = host.querySelector('svg') as SVGElement | null;
-    const boxes = computeMeasureBoxes(osmd, svg);
-    const entries = computeStaffEntries(osmd, svg);
+    // The projector enumerates every page <svg> under the host itself (A4 page
+    // mode renders one per page, M10), so we hand it the host, not a single svg.
+    const boxes = computeMeasureBoxes(osmd, host);
+    const entries = computeStaffEntries(osmd, host);
     // OSMD's coordinate (0,0) is the top-left of the svg, which sits at the
     // host's *content-box* origin (inside its padding). We derive the overlay
     // frame from the host — a real HTMLElement with valid offset/client metrics

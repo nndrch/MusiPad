@@ -1,4 +1,13 @@
-import { memo, useMemo, useState, type ReactNode, type RefObject } from 'react';
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import { Plus } from 'lucide-react';
 import {
@@ -19,7 +28,8 @@ interface ChordLayerProps {
   doc: Document;
   /** Bumps on every command edit so we re-read the (in-place-mutated) DOM. */
   revision: number;
-  /** Editing affordances are hidden while playing (the chart is display-only). */
+  /** Drives the layer's `is-playing` class (an inert styling hook now). Chord
+   *  editing stays enabled during playback (M13). */
   isPlaying: boolean;
   /** Add or replace the chord on a beat (parent dispatches + auditions). */
   onSetChord: (
@@ -31,6 +41,16 @@ interface ChordLayerProps {
   onRemoveChord: (measureIndex: number, entryIndex: number) => void;
   /** Audition a chord (the editor's Hear button). */
   onPreview: (spec: ChordSpec) => void;
+  /** Move a chord onto another beat, snapping to the nearest slash (M11). */
+  onMoveChord: (
+    fromMeasure: number,
+    fromEntry: number,
+    toMeasure: number,
+    toEntry: number,
+  ) => void;
+  /** Report when the chord editor opens/closes (M13) — lets the score suspend
+   *  the playing-bar auto-scroll while editing during playback. */
+  onEditingChange?: (open: boolean) => void;
 }
 
 interface Coord {
@@ -44,8 +64,25 @@ interface EditorState extends Coord {
   anchorRect: AnchorRect;
 }
 
+/** In-flight chord-pill drag (M11) — mirrors `MarkLayer`'s drag-to-snap. */
+interface DragState {
+  from: Coord;
+  /** The beat anchor nearest the pointer (the snap target). */
+  target: Coord;
+  /** Layer scale (screen px per unscaled px) captured at drag start. */
+  scale: number;
+  startX: number;
+  startY: number;
+  dx: number;
+  dy: number;
+  /** Becomes true once the pointer passes the drag threshold (vs a click). */
+  moved: boolean;
+}
+
 /** Unscaled px: width of the per-slash hover zone over a notehead. */
 const SLOT_W = 22;
+/** Pointer travel (screen px) that turns a pill press into a drag, not a click. */
+const DRAG_THRESHOLD = 4;
 
 /**
  * The interactive chord layer over the score (PRD §6.3, M6a). We render our
@@ -58,8 +95,9 @@ const SLOT_W = 22;
  *     **add** a chord at that beat.
  *   • **existing chord** → the pill **highlights** (accent) on hover; click it to
  *     **edit / remove**.
- * All edits go through the command layer (undoable). While playing this is
- * display-only so bar click-to-seek (M5) and the playhead aren't blocked.
+ * All edits go through the command layer (undoable) and stay enabled **during
+ * playback** (M13): pills and the ＋ stopPropagation, so editing never triggers
+ * the bar click-to-seek / play-pause underneath.
  *
  * Lives inside `.osmd-scale` (rides the zoom transform, like the M5 overlay);
  * the editor popover portals to the body in screen space so it isn't scaled.
@@ -74,9 +112,13 @@ export const ChordLayer = memo(function ChordLayer({
   onSetChord,
   onRemoveChord,
   onPreview,
+  onMoveChord,
+  onEditingChange,
 }: ChordLayerProps) {
   const { entries, frame } = useMeasureBoxes(osmdRef, hostRef, renderSignal);
   const [editor, setEditor] = useState<EditorState | null>(null);
+  const layerRef = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<DragState | null>(null);
 
   // Re-read chords after every in-place command edit (revision bumps).
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,15 +129,117 @@ export const ChordLayer = memo(function ChordLayer({
     return map;
   }, [chords]);
 
+  // Tell the score when the editor is open, so it suspends the playing-bar
+  // auto-scroll while editing during playback (keeps the popover anchored).
+  useEffect(() => {
+    if (!editor) return;
+    onEditingChange?.(true);
+    return () => onEditingChange?.(false);
+  }, [editor, onEditingChange]);
+
   if (!frame || entries.length === 0) return null;
 
   const isEditingAt = (a: Coord) =>
     editor?.measureIndex === a.measureIndex &&
     editor?.entryIndex === a.entryIndex;
 
+  // ── Drag-to-reorder (M11) ──────────────────────────────────────────────────
+  // A pill drags onto another beat, snapping to the nearest slash anchor; a
+  // short press (under the threshold) is still a click that opens the editor.
+  // Mirrors `MarkLayer`'s pointer-capture flow; screen↔unscaled is handled via
+  // the layer's live rect-vs-frame scale, so it's correct in both view modes.
+
+  /** The beat anchor nearest a screen point — the snap target while dragging. */
+  function anchorAtPoint(cx: number, cy: number): Coord | null {
+    const layer = layerRef.current;
+    if (!layer || !frame) return null;
+    const r = layer.getBoundingClientRect();
+    const scale = frame.width > 0 ? r.width / frame.width : 1;
+    let best: Coord | null = null;
+    let bestDist = Infinity;
+    for (const a of entries) {
+      const ddx = cx - (r.left + a.x * scale);
+      const ddy = cy - (r.top + a.y * scale);
+      const d = ddx * ddx + ddy * ddy;
+      if (d < bestDist) {
+        bestDist = d;
+        best = { measureIndex: a.measureIndex, entryIndex: a.entryIndex };
+      }
+    }
+    return best;
+  }
+
+  function startPillDrag(e: ReactPointerEvent<HTMLButtonElement>, from: Coord) {
+    if (editor) return;
+    e.stopPropagation();
+    const layer = layerRef.current;
+    const scale =
+      layer && frame && frame.width > 0
+        ? layer.getBoundingClientRect().width / frame.width
+        : 1;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDrag({
+      from,
+      target: from,
+      scale,
+      startX: e.clientX,
+      startY: e.clientY,
+      dx: 0,
+      dy: 0,
+      moved: false,
+    });
+  }
+
+  function movePillDrag(e: ReactPointerEvent<HTMLButtonElement>) {
+    if (!drag) return;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    const moved = drag.moved || Math.hypot(dx, dy) > DRAG_THRESHOLD;
+    const target = anchorAtPoint(e.clientX, e.clientY) ?? drag.target;
+    setDrag({ ...drag, dx, dy, moved, target });
+  }
+
+  function endPillDrag(e: ReactPointerEvent<HTMLButtonElement>, chordText: string) {
+    if (!drag) return;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    const { from, target, moved } = drag;
+    setDrag(null);
+    if (!moved) {
+      // A plain click (no drag) opens the editor on this chord.
+      setEditor({
+        ...from,
+        mode: 'edit',
+        initialText: chordText,
+        anchorRect: rectOf(e.currentTarget),
+      });
+      return;
+    }
+    if (
+      target.measureIndex !== from.measureIndex ||
+      target.entryIndex !== from.entryIndex
+    ) {
+      onMoveChord(
+        from.measureIndex,
+        from.entryIndex,
+        target.measureIndex,
+        target.entryIndex,
+      );
+    }
+  }
+
+  // The slash slot to highlight as the drop target while dragging.
+  const dropAnchor =
+    drag?.moved &&
+    entries.find(
+      (a) =>
+        a.measureIndex === drag.target.measureIndex &&
+        a.entryIndex === drag.target.entryIndex,
+    );
+
   return (
     <>
       <div
+        ref={layerRef}
         className={`chord-layer${isPlaying ? ' is-playing' : ''}`}
         style={{
           left: frame.left,
@@ -104,6 +248,17 @@ export const ChordLayer = memo(function ChordLayer({
           height: frame.height,
         }}
       >
+        {dropAnchor && (
+          <div
+            className="chord-drop"
+            style={{
+              left: dropAnchor.x - SLOT_W / 2,
+              top: dropAnchor.chordRowY,
+              width: SLOT_W,
+              height: Math.max(dropAnchor.slotBottomY - dropAnchor.chordRowY, 0),
+            }}
+          />
+        )}
         {entries.map((a) => {
           const coord: Coord = {
             measureIndex: a.measureIndex,
@@ -111,8 +266,14 @@ export const ChordLayer = memo(function ChordLayer({
           };
           const chord = chordByKey.get(`${a.measureIndex}:${a.entryIndex}`);
 
-          // Existing chord → a pill that highlights on hover and edits on click.
+          // Existing chord → a pill: click opens the editor, drag moves it onto
+          // another beat (snap to the nearest slash). A drag threshold keeps the
+          // two apart (M11).
           if (chord) {
+            const isDraggingThis =
+              !!drag?.moved &&
+              drag.from.measureIndex === a.measureIndex &&
+              drag.from.entryIndex === a.entryIndex;
             return (
               <button
                 key={`${a.measureIndex}:${a.entryIndex}`}
@@ -120,17 +281,20 @@ export const ChordLayer = memo(function ChordLayer({
                 data-chord-ui
                 data-measure={a.measureIndex}
                 data-entry={a.entryIndex}
-                className={`chord-pill${isEditingAt(a) ? ' is-active' : ''}`}
-                style={{ left: a.x, top: a.chordRowY }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditor({
-                    ...coord,
-                    mode: 'edit',
-                    initialText: chord.text,
-                    anchorRect: rectOf(e.currentTarget),
-                  });
+                className={`chord-pill${isEditingAt(a) ? ' is-active' : ''}${isDraggingThis ? ' is-dragging' : ''}`}
+                style={{
+                  left: a.x,
+                  top: a.chordRowY,
+                  // Keep the pill's -50% x-centering (CSS) while following the
+                  // pointer; inline transform overrides the stylesheet's.
+                  transform: isDraggingThis
+                    ? `translate(-50%, 0) translate(${drag.dx / drag.scale}px, ${drag.dy / drag.scale}px)`
+                    : undefined,
                 }}
+                onPointerDown={(e) => startPillDrag(e, coord)}
+                onPointerMove={movePillDrag}
+                onPointerUp={(e) => endPillDrag(e, chord.text)}
+                onClick={(e) => e.stopPropagation()}
               >
                 {renderSymbol(chord.text)}
               </button>
@@ -138,7 +302,6 @@ export const ChordLayer = memo(function ChordLayer({
           }
 
           // Empty slash → a hover zone over the note that reveals a ＋ above it.
-          if (isPlaying) return null;
           return (
             <div
               key={`${a.measureIndex}:${a.entryIndex}`}

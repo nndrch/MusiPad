@@ -11,6 +11,8 @@
  */
 
 import { setTempo } from '../commands/tempo';
+import { insertLeftDoubleBarline } from '../commands/barline';
+import { readChartSections } from './directions';
 
 /** C major (no sharps/flats). */
 const DEFAULT_FIFTHS = 0;
@@ -24,6 +26,26 @@ export interface DefaultsApplied {
 
 export function applyDefaults(doc: Document): DefaultsApplied {
   return { key: ensureKey(doc), tempo: ensureTempo(doc) };
+}
+
+/**
+ * M9: open every pre-existing section bar with the double-barline convention
+ * (PRD §6.5), so a loaded chart's sections match the chart view and round-trip
+ * on download. Like the key/tempo defaults above, this is a **load-time
+ * normalization** folded into the Invariant #2 baseline (it runs before the doc
+ * becomes the editable state) — the deliberate, scoped exception that makes the
+ * "persist section barlines" convention true for sections the file already had,
+ * not only ones authored later. The first bar of the chart is exempt.
+ */
+export function normalizeSectionBarlines(doc: Document): void {
+  const part = doc.querySelector('part');
+  if (!part) return;
+  const measures = part.querySelectorAll(':scope > measure');
+  for (const { measureIndex } of readChartSections(doc)) {
+    if (measureIndex <= 0) continue;
+    const measure = measures[measureIndex];
+    if (measure) insertLeftDoubleBarline(measure);
+  }
 }
 
 /** Insert a default key signature when the score has none. */

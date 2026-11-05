@@ -1,0 +1,18 @@
+/*
+ * Minimal rhythm slashes (M9), our own rendering over OSMD's SVG (OSMD's slash
+ * noteheads/stems are painted transparent in useOsmd). Like the other overlays
+ * it's click-through and lives inside `.osmd-scale`, riding the zoom transform.
+ * One diagonal stroke per beat, in chart ink (grayscale base, PRD §6.1).
+ */
+.slash-layer {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1; /* above the M5 selection wash (same layer, painted later in DOM) */
+  color: var(--text);
+}
+
+.slash-mark {
+  position: absolute;
+  transform: translate(-50%, -50%); /* center on the note's projected (x, y) */
+  overflow: visible;
+}
